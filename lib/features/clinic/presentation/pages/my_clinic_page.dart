@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class StaffBetaShellPage extends StatelessWidget {
-  const StaffBetaShellPage({super.key});
+class MyClinicPage extends StatelessWidget {
+  const MyClinicPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
-        child: Text('Área do Staff Beta'),
+        child: Text('Minha Clínica'),
       ),
     );
   }
