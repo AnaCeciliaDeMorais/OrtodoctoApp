@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/supabase/supabase_config.dart';
 import 'features/auth/presentation/pages/login_page.dart';

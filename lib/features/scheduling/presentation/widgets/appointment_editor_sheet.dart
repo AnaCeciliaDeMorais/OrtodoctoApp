@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/scheduling_repository.dart';
 import '../../models/appointment_label_model.dart';
 import '../../models/appointment_model.dart';
-import '../../models/appointment_reminder_model.dart';
 import '../../models/clinic_day_model.dart';
-import 'reminders_section.dart';
 
 class AppointmentEditorSheet extends StatefulWidget {
   final DateTime selectedDate;
@@ -32,26 +30,25 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
   final TextEditingController _patientIdController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _customLabelController = TextEditingController();
-  final TextEditingController _reminderTextController = TextEditingController();
 
   late DateTime _selectedClinicDate;
   late String _selectedTimeSlot;
-  String _selectedStatus = 'Em Espera';
+  String _selectedStatus = 'Agendado';
   String? _selectedLabelId;
-  DateTime? _selectedReminderDate;
 
   bool _saving = false;
 
   List<AppointmentLabelModel> _labels = [];
-  List<AppointmentReminderModel> _reminders = [];
   List<String> _availableSlots = [];
 
-  final List<String> _statuses = [
+  final List<String> _statuses = const [
+    'Agendado',
     'Em Espera',
     'Atendido',
     'Faltou',
   ];
+
+  bool get _isEditing => widget.initialAppointment != null;
 
   @override
   void initState() {
@@ -60,15 +57,19 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
     _selectedClinicDate = initial?.clinicDate ?? widget.selectedDate;
     _selectedTimeSlot = initial?.timeSlot ?? widget.initialTime;
-    _selectedStatus = initial?.status ?? 'Em Espera';
+    _selectedStatus = initial?.status ?? 'Agendado';
     _selectedLabelId = initial?.labelId;
     _notesController.text = initial?.notes ?? '';
-    _customLabelController.text = initial?.customLabel ?? '';
     _patientIdController.text = initial?.patientId ?? '';
-    _reminders = [...(initial?.reminders ?? [])]
-      ..sort((a, b) => a.showOnDate.compareTo(b.showOnDate));
 
     _loadSupportData();
+  }
+
+  @override
+  void dispose() {
+    _patientIdController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 
   List<String> _buildTimeSlots() {
@@ -98,35 +99,37 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
   }
 
   Future<void> _loadSupportData() async {
-    final labels = await widget.repository.getLabels();
-    final appointments = await widget.repository.getAppointmentsByDate(_selectedClinicDate);
+    try {
+      final labels = await widget.repository.getLabels();
+      final appointments =
+          await widget.repository.getAppointmentsByDate(_selectedClinicDate);
 
-    final occupied = appointments
-        .where((a) => a.id != widget.initialAppointment?.id)
-        .map((a) => a.timeSlot)
-        .toSet();
+      final occupied = appointments
+          .where((a) => a.id != widget.initialAppointment?.id)
+          .map((a) => a.timeSlot)
+          .toSet();
 
-    final available = _buildTimeSlots()
-        .where((slot) => !occupied.contains(slot) || slot == _selectedTimeSlot)
-        .toList();
+      final available = _buildTimeSlots()
+          .where((slot) => !occupied.contains(slot) || slot == _selectedTimeSlot)
+          .toList();
 
-    setState(() {
-      _labels = labels;
-      _availableSlots = available;
-    });
+      if (!mounted) return;
+
+      setState(() {
+        _labels = labels;
+        _availableSlots = available;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao carregar dados do formulário: $e')),
+      );
+    }
   }
 
-  Future<void> _openReminderSheet() async {
-  await showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => const RemindersSection(),
-  );
-}
-
   Future<void> _pickClinicDay() async {
-    final allowedDates = widget.clinicDays.map((e) => _dateOnly(e.clinicDate)).toSet();
+    final allowedDates =
+        widget.clinicDays.map((e) => _dateOnly(e.clinicDate)).toSet();
 
     final picked = await showDatePicker(
       context: context,
@@ -150,72 +153,113 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
     await _loadSupportData();
 
-    if (!_availableSlots.contains(_selectedTimeSlot) && _availableSlots.isNotEmpty) {
+    if (!_availableSlots.contains(_selectedTimeSlot) &&
+        _availableSlots.isNotEmpty) {
       setState(() {
         _selectedTimeSlot = _availableSlots.first;
       });
     }
   }
 
-  Future<void> _pickReminderDate() async {
-    final picked = await showDatePicker(
+  Future<AppointmentLabelModel?> _showCreateLabelDialog() async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<AppointmentLabelModel>(
       context: context,
-      initialDate: _selectedReminderDate ?? _selectedClinicDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Nova etiqueta'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Nome da etiqueta',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Informe o nome da etiqueta';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+
+                try {
+                  final label = await widget.repository.createLabel(
+                    controller.text.trim(),
+                  );
+
+                  if (!mounted) return;
+                  Navigator.pop(context, label);
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao criar etiqueta: $e')),
+                  );
+                }
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
     );
 
-    if (picked != null) {
-      setState(() => _selectedReminderDate = picked);
-    }
+    controller.dispose();
+    return result;
   }
 
-  void _addReminder() {
-    final text = _reminderTextController.text.trim();
+  Future<void> _onLabelChanged(String? value) async {
+    if (value == '__new__') {
+      final newLabel = await _showCreateLabelDialog();
+      if (newLabel == null) return;
 
-    if (text.isEmpty || _selectedReminderDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha o texto e a data do lembrete.')),
-      );
+      await _loadSupportData();
+
+      if (!mounted) return;
+      setState(() {
+        _selectedLabelId = newLabel.id;
+      });
       return;
     }
 
-    final userId = widget.repository.currentUser!.id;
-
     setState(() {
-      _reminders.add(
-        AppointmentReminderModel(
-          id: '',
-          appointmentId: widget.initialAppointment?.id ?? '',
-          reminderText: text,
-          showOnDate: _selectedReminderDate!,
-          createdBy: userId,
-        ),
-      );
-      _reminders.sort((a, b) => a.showOnDate.compareTo(b.showOnDate));
-      _reminderTextController.clear();
-      _selectedReminderDate = null;
+      _selectedLabelId = value;
     });
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_availableSlots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não há horários disponíveis para este dia.')),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
 
     try {
-      if (widget.initialAppointment == null) {
+      if (!_isEditing) {
         await widget.repository.createAppointment(
           patientId: _patientIdController.text.trim(),
           clinicDate: _selectedClinicDate,
           timeSlot: _selectedTimeSlot,
-          status: _selectedStatus,
+          status: 'Agendado',
           labelId: _selectedLabelId,
-          customLabel: _customLabelController.text.trim().isEmpty
-              ? null
-              : _customLabelController.text.trim(),
           notes: _notesController.text.trim(),
-          reminders: _reminders,
         );
       } else {
         await widget.repository.updateAppointment(
@@ -225,25 +269,32 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
           timeSlot: _selectedTimeSlot,
           status: _selectedStatus,
           labelId: _selectedLabelId,
-          customLabel: _customLabelController.text.trim().isEmpty
-              ? null
-              : _customLabelController.text.trim(),
           notes: _notesController.text.trim(),
-          reminders: _reminders,
         );
       }
 
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao salvar: $e')),
       );
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
   DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -261,11 +312,10 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  widget.initialAppointment == null
-                      ? 'Novo agendamento'
-                      : 'Editar agendamento',
+                  _isEditing ? 'Editar agendamento' : 'Novo agendamento',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -292,11 +342,7 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Dia do atendimento'),
-                  subtitle: Text(
-                    '${_selectedClinicDate.day.toString().padLeft(2, '0')}/'
-                    '${_selectedClinicDate.month.toString().padLeft(2, '0')}/'
-                    '${_selectedClinicDate.year}',
-                  ),
+                  subtitle: Text(_formatDate(_selectedClinicDate)),
                   trailing: const Icon(Icons.calendar_month),
                   onTap: _pickClinicDay,
                 ),
@@ -307,7 +353,7 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
                   initialValue: _selectedTimeSlot,
                   items: _availableSlots
                       .map(
-                        (slot) => DropdownMenuItem(
+                        (slot) => DropdownMenuItem<String>(
                           value: slot,
                           child: Text(slot),
                         ),
@@ -326,28 +372,29 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
                 const SizedBox(height: 16),
 
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedStatus,
-                  items: _statuses
-                      .map(
-                        (status) => DropdownMenuItem(
-                          value: status,
-                          child: Text(status),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedStatus = value);
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Situação',
-                    border: OutlineInputBorder(),
+                if (_isEditing) ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedStatus,
+                    items: _statuses
+                        .map(
+                          (status) => DropdownMenuItem<String>(
+                            value: status,
+                            child: Text(status),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _selectedStatus = value);
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Situação',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
 
                 DropdownButtonFormField<String?>(
                   initialValue: _selectedLabelId,
@@ -362,12 +409,14 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
                         child: Text(label.name),
                       ),
                     ),
+                    const DropdownMenuItem<String?>(
+                      value: '__new__',
+                      child: Text('+ Adicionar nova etiqueta'),
+                    ),
                   ],
-                  onChanged: (value) {
-                    setState(() => _selectedLabelId = value);
-                  },
+                  onChanged: _saving ? null : _onLabelChanged,
                   decoration: const InputDecoration(
-                    labelText: 'Etiqueta cadastrada',
+                    labelText: 'Etiquetas cadastradas',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -383,30 +432,7 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
                   ),
                 ),
 
-                const SizedBox(height: 8),
-
-                ..._reminders.map(
-                  (reminder) => Card(
-                    child: ListTile(
-                      title: Text(reminder.reminderText),
-                      subtitle: Text(
-                        '${reminder.showOnDate.day.toString().padLeft(2, '0')}/'
-                        '${reminder.showOnDate.month.toString().padLeft(2, '0')}/'
-                        '${reminder.showOnDate.year}',
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () {
-                          setState(() {
-                            _reminders.remove(reminder);
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 FilledButton(
                   onPressed: _saving ? null : _save,
