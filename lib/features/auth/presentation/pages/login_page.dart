@@ -5,6 +5,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../../../shells/client/client_shell_page.dart';
 import '../../../../shells/staff_beta/staff_beta_shell_page.dart';
 import '../../../../shells/staff_alfa/staff_alfa_shell_page.dart';
+import '../../../../core/theme/app_theme_controller.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -83,14 +84,14 @@ Future<void> _login() async {
 
     if (profileLevel == 'staff_beta') {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const StaffBetaShellPage()),
+        MaterialPageRoute(builder: (_) => StaffBetaShellPage(themeController: AppThemeController())),
       );
       return;
     }
 
     if (profileLevel == 'staff_alfa') {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const StaffAlfaShellPage()),
+        MaterialPageRoute(builder: (_) => StaffAlfaShellPage(themeController: AppThemeController())),
       );
       return;
     }

@@ -1,4 +1,4 @@
-class TreatmentModel {
+class TreatmentItemModel {
   final String id;
   final String title;
   final String? description;
@@ -6,10 +6,8 @@ class TreatmentModel {
   final double? promotionalPrice;
   final bool isPromotion;
   final bool isActive;
-  final String createdBy;
-  final DateTime createdAt;
 
-  TreatmentModel({
+  TreatmentItemModel({
     required this.id,
     required this.title,
     this.description,
@@ -17,12 +15,10 @@ class TreatmentModel {
     this.promotionalPrice,
     required this.isPromotion,
     required this.isActive,
-    required this.createdBy,
-    required this.createdAt,
   });
 
-  factory TreatmentModel.fromMap(Map<String, dynamic> map) {
-    return TreatmentModel(
+  factory TreatmentItemModel.fromMap(Map<String, dynamic> map) {
+    return TreatmentItemModel(
       id: map['id'] as String,
       title: map['title'] as String,
       description: map['description'] as String?,
@@ -34,22 +30,6 @@ class TreatmentModel {
           : null,
       isPromotion: (map['is_promotion'] as bool?) ?? false,
       isActive: (map['is_active'] as bool?) ?? true,
-      createdBy: map['created_by'] as String,
-      createdAt: DateTime.parse(map['created_at'] as String),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'original_price': originalPrice,
-      'promotional_price': promotionalPrice,
-      'is_promotion': isPromotion,
-      'is_active': isActive,
-      'created_by': createdBy,
-      'created_at': createdAt.toIso8601String(),
-    };
   }
 }

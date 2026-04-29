@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class StaffBetaShellPage extends StatelessWidget {
-  const StaffBetaShellPage({super.key});
+import 'app/app.dart';
+import 'core/theme/app_theme_controller.dart';
+import 'shells/staff_beta/staff_beta_shell_page.dart';
 
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Área do Staff Beta'),
-      ),
-    );
-  }
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://ufctmsjoxqcnxkgstzft.supabase.co',
+    anonKey: 'sb_publishable_aUScf8Z4Dtg-AQRhEwgZog_8LVIdrly',
+  );
+
+  final themeController = AppThemeController();
+
+  runApp(
+  MyApp(
+    themeController: themeController,
+  ),
+);
 }

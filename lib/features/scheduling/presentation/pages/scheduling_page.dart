@@ -282,6 +282,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
             itemBuilder: (context, index) {
               final time = slots[index];
               final item = _findAppointmentBySlot(time);
+              final bool isOccupied = item != null;
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -314,12 +315,13 @@ class _SchedulingPageState extends State<SchedulingPage> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: item == null
-                                ? Colors.white
-                                : const Color(0xFFFFF2F0),
+                            color: isOccupied ? const Color(0xFFFFE2E2) : Colors.white,
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                              color: const Color(0xFFF0D3D7),
+                              color: isOccupied
+                                  ? const Color(0xFFE57373)
+                                  : const Color(0xFFF0D3D7),
+                              width: 1.2,
                             ),
                           ),
                           child: Row(
@@ -330,25 +332,26 @@ class _SchedulingPageState extends State<SchedulingPage> {
                                   children: [
                                     Text(
                                       item?.patientName ?? 'Livre',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
+                                        color: isOccupied ? const Color(0xFFB71C1C) : Colors.black,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      item == null
-                                          ? 'Toque para agendar'
-                                          : (item.notes?.isNotEmpty == true
-                                              ? item.notes!
-                                              : 'Agendado'),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.black.withOpacity(0.65),
+                                     Text(
+                                        item == null
+                                            ? 'Toque para agendar'
+                                            : 'Horário ocupado',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isOccupied
+                                              ? const Color(0xFFC62828)
+                                              : Colors.black.withOpacity(0.65),
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),

@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_theme_controller.dart';
 import '../../features/scheduling/presentation/pages/scheduling_page.dart';
 import '../../features/clients/presentation/pages/clients_page.dart';
-import '../../features/treatments/presentation/pages/treatments_page.dart';
-import '../../features/team/presentation/pages/team_page.dart';
-import '../../features/report/presentation/pages/reports_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
-import '../../features/payments/presentation/pages/payments_page.dart';
+import '../../features/people/presentation/pages/people_page.dart';
 
 class StaffAlfaShellPage extends StatefulWidget {
-  const StaffAlfaShellPage({super.key});
+  final AppThemeController themeController;
+
+  const StaffAlfaShellPage({
+    super.key,
+    required this.themeController,
+  });
 
   @override
   State<StaffAlfaShellPage> createState() => _StaffAlfaShellPageState();
@@ -17,12 +21,11 @@ class StaffAlfaShellPage extends StatefulWidget {
 class _StaffAlfaShellPageState extends State<StaffAlfaShellPage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    SchedulingPage(profileLevel: 'staff_alfa'),
-    const ClientsPage(),
-    const TreatmentsPage(),
-    const PaymentsPage(),
-  ];
+  late final List<Widget> _pages = [
+  const SchedulingPage(profileLevel: 'staff_alfa'),
+  const PeoplePage(),
+  ProfilePage(themeController: widget.themeController),
+];
 
   @override
   Widget build(BuildContext context) {
@@ -45,18 +48,13 @@ class _StaffAlfaShellPageState extends State<StaffAlfaShellPage> {
             label: 'Agenda',
           ),
           NavigationDestination(
-            icon: Icon(Icons.medical_services_outlined),
-            selectedIcon: Icon(Icons.medical_services),
-            label: 'Tratam.',
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: 'Pessoas',
           ),
           NavigationDestination(
-            icon: Icon(Icons.local_hospital_outlined),
-            selectedIcon: Icon(Icons.local_hospital),
-            label: 'Clínica',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+            icon: Icon(Icons.account_circle_outlined),
+            selectedIcon: Icon(Icons.account_circle),
             label: 'Perfil',
           ),
         ],

@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
-import '../../features/scheduling/presentation/pages/scheduling_page.dart';
+
+import '../../core/theme/app_theme_controller.dart';
 import '../../features/clients/presentation/pages/clients_page.dart';
-import '../../features/treatments/presentation/pages/treatments_page.dart';
-import '../../features/payments/presentation/pages/payments_page.dart';
-
-
+import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/scheduling/presentation/pages/scheduling_page.dart';
 
 class StaffBetaShellPage extends StatefulWidget {
-  const StaffBetaShellPage({super.key});
+  final AppThemeController themeController;
+
+  const StaffBetaShellPage({
+    super.key,
+    required this.themeController,
+  });
 
   @override
   State<StaffBetaShellPage> createState() => _StaffBetaShellPageState();
-  
 }
 
 class _StaffBetaShellPageState extends State<StaffBetaShellPage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    SchedulingPage(profileLevel: 'staff_beta'),
+  late final List<Widget> _pages = [
+    const SchedulingPage(profileLevel: 'staff_beta'),
     const ClientsPage(),
-    const TreatmentsPage(),
-    const PaymentsPage(),
+    ProfilePage(themeController: widget.themeController),
   ];
 
   @override
@@ -40,24 +42,16 @@ class _StaffBetaShellPageState extends State<StaffBetaShellPage> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today),
+            icon: Icon(Icons.calendar_today),
             label: 'Agenda',
           ),
           NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups),
+            icon: Icon(Icons.people),
             label: 'Clientes',
           ),
           NavigationDestination(
-            icon: Icon(Icons.medical_information_outlined),
-            selectedIcon: Icon(Icons.medical_information),
-            label: 'Tratam.',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Caixa',
+            icon: Icon(Icons.account_circle),
+            label: 'Perfil',
           ),
         ],
       ),

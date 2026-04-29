@@ -15,8 +15,42 @@ class ClientsRepository {
         .order('name', ascending: true);
 
     return (response as List)
-        .map((e) => ClientModel.fromMap(e as Map<String, dynamic>))
+        .map((item) => ClientModel.fromMap(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<ClientModel> createClient({
+    required String name,
+    String? rg,
+    String? cpf,
+    String? phone,
+    String? addressStreet,
+    String? addressNumber,
+    String? neighborhood,
+    String? city,
+    DateTime? birthDate,
+    String? guardianName,
+  }) async {
+    final clientData = {
+      'name': name,
+      'rg': rg,
+      'cpf': cpf,
+      'phone': phone,
+      'address_street': addressStreet,
+      'address_number': addressNumber,
+      'neighborhood': neighborhood,
+      'city': city,
+      'birth_date': birthDate?.toIso8601String().split('T').first,
+      'guardian_name': guardianName,
+    };
+
+    final response = await _client
+        .from('patients')
+        .insert(clientData)
+        .select()
+        .single();
+
+    return ClientModel.fromMap(response);
   }
 
   Future<ClientModel> getClientById(String clientId) async {
