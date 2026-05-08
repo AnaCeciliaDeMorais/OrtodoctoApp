@@ -4,7 +4,7 @@ import '../../core/theme/app_theme_controller.dart';
 import '../../features/scheduling/presentation/pages/scheduling_page.dart';
 import '../../features/clients/presentation/pages/clients_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
-import '../../features/people/presentation/pages/people_page.dart';
+import '../../features/contacts/presentation/contacts/contacts_page.dart';
 
 class StaffAlfaShellPage extends StatefulWidget {
   final AppThemeController themeController;
@@ -23,7 +23,7 @@ class _StaffAlfaShellPageState extends State<StaffAlfaShellPage> {
 
   late final List<Widget> _pages = [
   const SchedulingPage(profileLevel: 'staff_alfa'),
-  const PeoplePage(),
+  const ContactsPage(),
   ProfilePage(themeController: widget.themeController),
 ];
 
@@ -50,7 +50,7 @@ class _StaffAlfaShellPageState extends State<StaffAlfaShellPage> {
           NavigationDestination(
             icon: Icon(Icons.people_outline),
             selectedIcon: Icon(Icons.people),
-            label: 'Pessoas',
+            label: 'Empresa',
           ),
           NavigationDestination(
             icon: Icon(Icons.account_circle_outlined),

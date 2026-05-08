@@ -6,14 +6,12 @@ import '../../models/clinic_day_model.dart';
 import '../widgets/appointment_editor_sheet.dart';
 import '../widgets/reminders_section.dart';
 import '../widgets/reminder_editor_sheet.dart';
+import 'staff_alpha_clinic_days_page.dart';
 
 class SchedulingPage extends StatefulWidget {
   final String profileLevel;
 
-  const SchedulingPage({
-    super.key,
-    required this.profileLevel,
-  });
+  const SchedulingPage({super.key, required this.profileLevel});
 
   @override
   State<SchedulingPage> createState() => _SchedulingPageState();
@@ -85,24 +83,26 @@ class _SchedulingPageState extends State<SchedulingPage> {
   }
 
   Future<void> _pickScheduleDate() async {
-  final picked = await showDatePicker(
-    context: context,
-    initialDate: _selectedDate,
-    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-  );
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
 
-  if (picked == null) return;
+    if (picked == null) return;
 
-  await _loadAppointmentsByDate(picked);
-}
+    await _loadAppointmentsByDate(picked);
+  }
 
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
 
     try {
       final clinicDays = await _repository.getAvailableClinicDays();
-      final appointments = await _repository.getAppointmentsByDate(_selectedDate);
+      final appointments = await _repository.getAppointmentsByDate(
+        _selectedDate,
+      );
 
       setState(() {
         _clinicDays = clinicDays;
@@ -137,15 +137,11 @@ class _SchedulingPageState extends State<SchedulingPage> {
   }
 
   void _goToPreviousDay() {
-    _loadAppointmentsByDate(
-      _selectedDate.subtract(const Duration(days: 1)),
-    );
+    _loadAppointmentsByDate(_selectedDate.subtract(const Duration(days: 1)));
   }
 
   void _goToNextDay() {
-    _loadAppointmentsByDate(
-      _selectedDate.add(const Duration(days: 1)),
-    );
+    _loadAppointmentsByDate(_selectedDate.add(const Duration(days: 1)));
   }
 
   AppointmentModel? _findAppointmentBySlot(String time) {
@@ -203,8 +199,37 @@ class _SchedulingPageState extends State<SchedulingPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildStaffAlphaEditButton() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: TextButton(
+        style: TextButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFFB71C1C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StaffAlfaClinicDaysPage(),
+            ),
+          );
+        },
+        child: const Text(
+          'Editar',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 
@@ -315,7 +340,9 @@ class _SchedulingPageState extends State<SchedulingPage> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: isOccupied ? const Color(0xFFFFE2E2) : Colors.white,
+                            color: isOccupied
+                                ? const Color(0xFFFFE2E2)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: isOccupied
@@ -335,23 +362,25 @@ class _SchedulingPageState extends State<SchedulingPage> {
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
-                                        color: isOccupied ? const Color(0xFFB71C1C) : Colors.black,
+                                        color: isOccupied
+                                            ? const Color(0xFFB71C1C)
+                                            : Colors.black,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                     Text(
-                                        item == null
-                                            ? 'Toque para agendar'
-                                            : 'Horário ocupado',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isOccupied
-                                              ? const Color(0xFFC62828)
-                                              : Colors.black.withOpacity(0.65),
-                                        ),
+                                    Text(
+                                      item == null
+                                          ? 'Toque para agendar'
+                                          : 'Horário ocupado',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isOccupied
+                                            ? const Color(0xFFC62828)
+                                            : Colors.black.withOpacity(0.65),
                                       ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -378,14 +407,17 @@ class _SchedulingPageState extends State<SchedulingPage> {
   }
 
   Widget _buildRemindersTab() {
-    return RemindersSection(
-      onAddReminder: _openReminderSheet,
-    );
+    return RemindersSection(onAddReminder: _openReminderSheet);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       backgroundColor: const Color(0xFFFBECEE),
       body: SafeArea(
         child: _isLoading
@@ -393,6 +425,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
             : Column(
                 children: [
                   _buildTopTabs(),
+                  _buildStaffAlphaEditButton(),
                   Expanded(
                     child: _selectedTabIndex == 0
                         ? _buildAppointmentsTab()
@@ -434,10 +467,7 @@ class _ScheduleHeader extends StatelessWidget {
         children: [
           Text(
             isAlpha ? 'Agenda • Staff Alpha' : 'Agenda • Staff Beta',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
           ),
           const SizedBox(height: 8),
           Row(
@@ -466,15 +496,9 @@ class _ScheduleHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              _CircleButton(
-                icon: Icons.chevron_left,
-                onTap: onPrevious,
-              ),
+              _CircleButton(icon: Icons.chevron_left, onTap: onPrevious),
               const SizedBox(width: 8),
-              _CircleButton(
-                icon: Icons.chevron_right,
-                onTap: onNext,
-              ),
+              _CircleButton(icon: Icons.chevron_right, onTap: onNext),
             ],
           ),
         ],
@@ -487,10 +511,7 @@ class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _CircleButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _CircleButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -504,11 +525,7 @@ class _CircleButton extends StatelessWidget {
           color: Color(0xFFF7D8DB),
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: Color(0xFFDD6B7B),
-        ),
+        child: Icon(icon, size: 20, color: Color(0xFFDD6B7B)),
       ),
     );
   }

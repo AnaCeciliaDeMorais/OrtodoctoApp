@@ -5,6 +5,7 @@ import '../../models/cash_entry_model.dart';
 import '../../models/profile_employee_model.dart';
 import '../../models/treatment_item_model.dart';
 import '../../../../core/theme/app_theme_controller.dart';
+import 'widgets/staff_alfa_cash_summary.dart';
 
 class ProfilePage extends StatefulWidget {
   final AppThemeController themeController;
@@ -562,7 +563,7 @@ class _ProfilePageState extends State<ProfilePage> {
             child: _tabIndex == 0
                 ? _meusDados()
                 : _tabIndex == 1
-                    ? _meuCaixa()
+                    ? const StaffAlfaCashSummary()
                     : _tratamentos(),
           ),
         ],
