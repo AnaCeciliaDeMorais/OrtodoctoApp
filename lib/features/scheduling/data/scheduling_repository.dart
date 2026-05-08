@@ -6,11 +6,28 @@ import '../models/clinic_day_model.dart';
 
 class SchedulingRepository {
   SchedulingRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
 
   User? get currentUser => _client.auth.currentUser;
+
+  Future<List<AppointmentModel>> getClientUpcomingAppointments() async {
+    final userId = currentUser!.id;
+    final today = DateTime.now().toIso8601String().split('T').first;
+
+    final response = await _client
+        .from('appointments')
+        .select('*, patients(name)')
+        .eq('patient_id', userId)
+        .gte('clinic_date', today)
+        .order('clinic_date', ascending: true)
+        .order('time_slot', ascending: true);
+
+    return (response as List)
+        .map((e) => AppointmentModel.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
 
   Future<List<AppointmentModel>> getAppointmentsByDate(DateTime date) async {
     final dateOnly = date.toIso8601String().split('T').first;
@@ -94,14 +111,17 @@ class SchedulingRepository {
     final userId = currentUser!.id;
     final dateOnly = clinicDate.toIso8601String().split('T').first;
 
-    await _client.from('appointments').update({
-      'patient_id': patientId,
-      'clinic_date': dateOnly,
-      'time_slot': timeSlot,
-      'status': status,
-      'label_id': labelId,
-      'notes': notes,
-      'updated_by': userId,
-    }).eq('id', appointmentId);
+    await _client
+        .from('appointments')
+        .update({
+          'patient_id': patientId,
+          'clinic_date': dateOnly,
+          'time_slot': timeSlot,
+          'status': status,
+          'label_id': labelId,
+          'notes': notes,
+          'updated_by': userId,
+        })
+        .eq('id', appointmentId);
   }
 }

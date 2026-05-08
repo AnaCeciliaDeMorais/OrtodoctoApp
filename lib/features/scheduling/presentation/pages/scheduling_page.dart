@@ -28,6 +28,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
   List<ClinicDayModel> _clinicDays = [];
 
   bool get _isAlpha => widget.profileLevel == 'staff_alpha';
+  bool get _isClient => widget.profileLevel == 'client';
 
   @override
   void initState() {
@@ -99,15 +100,26 @@ class _SchedulingPageState extends State<SchedulingPage> {
     setState(() => _isLoading = true);
 
     try {
-      final clinicDays = await _repository.getAvailableClinicDays();
-      final appointments = await _repository.getAppointmentsByDate(
-        _selectedDate,
-      );
+      if (_isClient) {
+        // Para clientes: carregar próximos agendamentos e dias disponíveis
+        final appointments = await _repository.getClientUpcomingAppointments();
+        final clinicDays = await _repository.getAvailableClinicDays();
+        setState(() {
+          _appointments = appointments;
+          _clinicDays = clinicDays;
+        });
+      } else {
+        // Para staff: carregar dias disponíveis e agendamentos do dia
+        final clinicDays = await _repository.getAvailableClinicDays();
+        final appointments = await _repository.getAppointmentsByDate(
+          _selectedDate,
+        );
 
-      setState(() {
-        _clinicDays = clinicDays;
-        _appointments = appointments;
-      });
+        setState(() {
+          _clinicDays = clinicDays;
+          _appointments = appointments;
+        });
+      }
     } catch (e) {
       _showMessage('Erro ao carregar agenda: $e');
     } finally {
@@ -202,6 +214,210 @@ class _SchedulingPageState extends State<SchedulingPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildClientView() {
+    final currentMonth = DateTime.now();
+    final availableDays = _clinicDays.where((day) {
+      final dayDate = day.clinicDate;
+      return dayDate.year == currentMonth.year &&
+          dayDate.month == currentMonth.month;
+    }).toList();
+
+    final groupedAppointments = <String, List<AppointmentModel>>{};
+    final appointmentOrder = <String>[];
+
+    for (final appointment in _appointments) {
+      final appointmentDate = appointment.clinicDate;
+      final groupKey = _formatMonthYear(appointmentDate);
+      if (!groupedAppointments.containsKey(groupKey)) {
+        appointmentOrder.add(groupKey);
+      }
+      groupedAppointments.putIfAbsent(groupKey, () => []).add(appointment);
+    }
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dias disponíveis em ${_formatMonthYear(currentMonth)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (availableDays.isEmpty)
+                      const Text('Nenhum dia disponível neste mês.')
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: availableDays.map((day) {
+                          final dayDate = day.clinicDate;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7D8DB),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              '${dayDate.day}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFDD6B7B),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Meus próximos agendamentos',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_appointments.isEmpty)
+                    const Text('Nenhum agendamento futuro encontrado.')
+                  else
+                    ...appointmentOrder.map((monthLabel) {
+                      final appointments = groupedAppointments[monthLabel]!;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            monthLabel,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFB71C1C),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ...appointments.map(
+                            (appointment) => Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFE2E2),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: const Color(0xFFE57373),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _formatAppointmentDate(
+                                      appointment.clinicDate,
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFFB71C1C),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Horário: ${appointment.timeSlot}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFFC62828),
+                                    ),
+                                  ),
+                                  if (appointment.notes != null &&
+                                      appointment.notes!.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Observações: ${appointment.notes}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    }).toList(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatAppointmentDate(DateTime date) {
+    const months = [
+      '',
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
+    return '${date.day} ${months[date.month]} ${date.year}';
+  }
+
+  String _formatMonthYear(DateTime date) {
+    const months = [
+      '',
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+    return '${months[date.month]} ${date.year}';
   }
 
   Widget _buildStaffAlphaEditButton() {
@@ -412,6 +628,26 @@ class _SchedulingPageState extends State<SchedulingPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isClient) {
+      return Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: const Text(
+            'Meus Agendamentos',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+        backgroundColor: const Color(0xFFFBECEE),
+        body: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(child: _buildClientView()),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,

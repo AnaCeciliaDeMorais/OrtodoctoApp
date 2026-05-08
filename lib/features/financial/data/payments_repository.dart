@@ -25,6 +25,34 @@ class PaymentsRepository {
         .toList();
   }
 
+  Future<List<PaymentModel>> getPendingPaymentsCreatedByStaff() async {
+    final staffResponse = await _client
+        .from('profiles')
+        .select('id')
+        .filter('profile_level', 'in', ['staff_alpha', 'staff_beta']);
+
+    final staffList = staffResponse as List?;
+    if (staffList == null || staffList.isEmpty) return [];
+
+    final staffIds = staffList
+        .map((item) => item['id'] as String)
+        .where((id) => id.isNotEmpty)
+        .toList();
+
+    if (staffIds.isEmpty) return [];
+
+    final response = await _client
+        .from('cash_entries')
+        .select()
+        .eq('status', 'pending')
+        .filter('created_by', 'in', staffIds)
+        .order('created_at', ascending: false);
+
+    return (response as List)
+        .map((e) => PaymentModel.fromMap(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<PaymentModel> createPayment({
     required double value,
     required String status,
@@ -74,5 +102,14 @@ class PaymentsRepository {
 
   Future<void> deletePayment(String paymentId) async {
     await _client.from('cash_entries').delete().eq('id', paymentId);
+  }
+
+  Future<List<Map<String, dynamic>>> getCashEntriesReportData() async {
+    final response = await _client
+        .from('cash_entries')
+        .select('*, patients(name, cpf, guardian_name, guardian_cpf)')
+        .order('created_at', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response as List);
   }
 }

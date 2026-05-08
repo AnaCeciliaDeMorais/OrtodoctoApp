@@ -37,6 +37,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_localizations:
     sdk: flutter
+  pdf: ^3.10.7
+  printing: ^5.13.3
 
 dev_dependencies:
   flutter_test:

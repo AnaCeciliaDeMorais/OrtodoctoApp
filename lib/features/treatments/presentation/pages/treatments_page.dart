@@ -4,7 +4,9 @@ import '../../data/treatments_repository.dart';
 import '../../../../shared/models/treatment_model.dart';
 
 class TreatmentsPage extends StatefulWidget {
-  const TreatmentsPage({super.key});
+  final String profileLevel;
+
+  const TreatmentsPage({super.key, this.profileLevel = 'staff'});
 
   @override
   State<TreatmentsPage> createState() => _TreatmentsPageState();
@@ -15,6 +17,8 @@ class _TreatmentsPageState extends State<TreatmentsPage> {
 
   bool _isLoading = true;
   List<TreatmentModel> _treatments = [];
+
+  bool get _isClient => widget.profileLevel == 'client';
 
   @override
   void initState() {
@@ -179,10 +183,7 @@ class _TreatmentsPageState extends State<TreatmentsPage> {
         alignment: Alignment.centerLeft,
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -226,18 +227,17 @@ class _TreatmentsPageState extends State<TreatmentsPage> {
                   const SizedBox(height: 6),
                   Text(
                     'R\$ ${treatment.originalPrice!.toStringAsFixed(2).replaceAll('.', ',')}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ],
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => _openItemMenu(treatment),
-            icon: const Icon(Icons.more_vert),
-          ),
+          if (!_isClient)
+            IconButton(
+              onPressed: () => _openItemMenu(treatment),
+              icon: const Icon(Icons.more_vert),
+            ),
         ],
       ),
     );
@@ -250,10 +250,12 @@ class _TreatmentsPageState extends State<TreatmentsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFBECEE),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addTreatment,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _isClient
+          ? null
+          : FloatingActionButton(
+              onPressed: _addTreatment,
+              child: const Icon(Icons.add),
+            ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -331,8 +333,10 @@ class _TreatmentDialogState extends State<_TreatmentDialog> {
     if (widget.treatment != null) {
       _titleController.text = widget.treatment!.title;
       _descriptionController.text = widget.treatment!.description ?? '';
-      _originalPriceController.text = widget.treatment!.originalPrice?.toString() ?? '';
-      _promotionalPriceController.text = widget.treatment!.promotionalPrice?.toString() ?? '';
+      _originalPriceController.text =
+          widget.treatment!.originalPrice?.toString() ?? '';
+      _promotionalPriceController.text =
+          widget.treatment!.promotionalPrice?.toString() ?? '';
       _isPromotion = widget.treatment!.isPromotion;
     }
   }
@@ -368,7 +372,9 @@ class _TreatmentDialogState extends State<_TreatmentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.treatment == null ? 'Novo Tratamento' : 'Editar Tratamento'),
+      title: Text(
+        widget.treatment == null ? 'Novo Tratamento' : 'Editar Tratamento',
+      ),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -442,10 +448,7 @@ class _TreatmentDialogState extends State<_TreatmentDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancelar'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Salvar'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Salvar')),
       ],
     );
   }

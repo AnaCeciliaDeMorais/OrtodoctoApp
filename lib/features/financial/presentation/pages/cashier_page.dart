@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../data/payments_repository.dart';
 import '../../../../shared/models/payment_model.dart';
@@ -71,34 +74,118 @@ class _CashierPageState extends State<CashierPage> {
     }
   }
 
-  Future<void> _editPayment(PaymentModel payment) async {
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => _PaymentDialog(payment: payment),
-    );
+  Future<void> _generateSalesReport() async {
+    final pdf = pw.Document();
 
-    if (result != null) {
-      try {
-        await _repository.updatePayment(
-          paymentId: payment.id,
-          value: result['value'],
-          status: result['status'],
-          observation: result['observation'],
-          paymentMethod: result['paymentMethod'],
+    try {
+      final paymentsData = await _repository.getCashEntriesReportData();
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Relatório de Vendas',
+                  style: pw.TextStyle(
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text(
+                  'Data do relatório: ${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year}',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+                pw.SizedBox(height: 20),
+                pw.Table.fromTextArray(
+                  headers: [
+                    'Nome',
+                    'CPF',
+                    'Responsável',
+                    'CPF Responsável',
+                    'Dt Pagamento',
+                    'Vencimento',
+                    'Valor',
+                    'Forma de Pagamento',
+                  ],
+                  data: paymentsData.map((payment) {
+                    final patient = payment['patients'] as Map<String, dynamic>?;
+                    final paymentDate = payment['payment_date'] != null
+                        ? DateTime.parse(payment['payment_date'] as String)
+                        : DateTime.parse(payment['created_at'] as String);
+                    final dueDate = payment['due_date'] != null
+                        ? DateTime.parse(payment['due_date'] as String)
+                        : paymentDate.add(const Duration(days: 30));
+
+                    return [
+                      patient?['name'] ?? 'N/A',
+                      patient?['cpf'] ?? 'N/A',
+                      patient?['guardian_name'] ?? 'N/A',
+                      patient?['guardian_cpf'] ?? 'N/A',
+                      '${paymentDate.day.toString().padLeft(2, '0')}/${paymentDate.month.toString().padLeft(2, '0')}/${paymentDate.year}',
+                      '${dueDate.day.toString().padLeft(2, '0')}/${dueDate.month.toString().padLeft(2, '0')}/${dueDate.year}',
+                      'R\$ ${(payment['value'] as num).toDouble().toStringAsFixed(2).replaceAll('.', ',')}',
+                      _formatPaymentMethod(payment['payment_method'] as String?),
+                    ];
+                  }).toList(),
+                  headerStyle: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                  cellStyle: const pw.TextStyle(fontSize: 9),
+                  headerDecoration: const pw.BoxDecoration(
+                    color: PdfColors.grey300,
+                  ),
+                  rowDecoration: pw.BoxDecoration(color: PdfColors.white),
+                  alternateRowDecoration: const pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                  ),
+                  border: pw.TableBorder.all(color: PdfColors.grey),
+                  cellHeight: 25,
+                  cellAlignments: {
+                    0: pw.Alignment.centerLeft,
+                    1: pw.Alignment.center,
+                    2: pw.Alignment.centerLeft,
+                    3: pw.Alignment.center,
+                    4: pw.Alignment.center,
+                    5: pw.Alignment.center,
+                    6: pw.Alignment.center,
+                    7: pw.Alignment.center,
+                  },
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gerar relatório: $e')),
         );
-        await _loadPayments();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Lançamento atualizado com sucesso')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao atualizar lançamento: $e')),
-          );
-        }
       }
+    }
+  }
+
+  String _formatPaymentMethod(String? method) {
+    switch (method) {
+      case 'pix':
+        return 'PIX';
+      case 'card':
+        return 'Cartão';
+      case 'cash':
+        return 'Dinheiro';
+      case 'bank_slip':
+        return 'Boleto';
+      default:
+        return method ?? 'N/A';
     }
   }
 
@@ -107,7 +194,9 @@ class _CashierPageState extends State<CashierPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Confirmar exclusão'),
-        content: Text('Deseja excluir este lançamento de R\$ ${payment.value.toStringAsFixed(2).replaceAll('.', ',')}?'),
+        content: Text(
+          'Deseja excluir este lançamento de R\$ ${payment.value.toStringAsFixed(2).replaceAll('.', ',')}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -235,7 +324,8 @@ class _CashierPageState extends State<CashierPage> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'R\$ ${payment.value.toStringAsFixed(2).replaceAll('.', ',')}',
@@ -272,7 +362,7 @@ class _CashierPageState extends State<CashierPage> {
                     child: SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: () {},
+                        onPressed: _generateSalesReport,
                         child: const Text('Relatório de vendas'),
                       ),
                     ),
@@ -367,7 +457,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.payment == null ? 'Novo Lançamento' : 'Editar Lançamento'),
+      title: Text(
+        widget.payment == null ? 'Novo Lançamento' : 'Editar Lançamento',
+      ),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -445,10 +537,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancelar'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Salvar'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Salvar')),
       ],
     );
   }
