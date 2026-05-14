@@ -14,6 +14,13 @@ class ClientRepository {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  Future<void> deletePatient(String id) async {
+  await _supabase
+      .from('patients')
+      .delete()
+      .eq('id', id);
+}
+
   Future<ClientModel> getClientById(String id) async {
     final response =
         await _supabase.from('patients').select().eq('id', id).single();
@@ -37,38 +44,44 @@ class ClientRepository {
     });
   }
 
-  Future<void> updatePatient({
-    required String id,
-    required String name,
-    String? phone,
-    String? cpf,
-    String? guardianName,
-    String? guardianCpf,
-  }) async {
-    await _supabase.from('patients').update({
-      'name': name,
-      'phone': phone,
-      'cpf': cpf,
-      'guardian_name': guardianName,
-      'guardian_cpf': guardianCpf,
-    }).eq('id', id);
-  }
+ Future<void> updatePatient({
+  required String id,
+  required String name,
+  String? phone,
+  String? cpf,
+  String? rg,
+  String? addressStreet,
+  String? addressNumber,
+  String? neighborhood,
+  String? city,
+  String? guardianName,
+  String? guardianCpf,
+}) async {
+  await _supabase.from('patients').update({
+    'name': name,
+    'phone': phone,
+    'cpf': cpf,
+    'rg': rg,
+    'street': addressStreet,
+    'number': addressNumber,
+    'neighborhood': neighborhood,
+    'city': city,
+    'guardian_name': guardianName,
+    'guardian_cpf': guardianCpf,
+  }).eq('id', id);
+}
 
-  Future<void> deletePatient(String id) async {
-    await _supabase.from('patients').delete().eq('id', id);
-  }
+Future<List<Map<String, dynamic>>> getClientFinancialEntries(
+  String clientId,
+) async {
+  final response = await _supabase
+      .from('cash_entries')
+      .select()
+      .eq('patient_id', clientId)
+      .order('due_date', ascending: false);
 
-  Future<List<Map<String, dynamic>>> getClientFinancialEntries(
-    String clientId,
-  ) async {
-    final response = await _supabase
-        .from('cash_entries')
-        .select()
-        .eq('patient_id', clientId)
-        .order('due_date', ascending: false);
-
-    return List<Map<String, dynamic>>.from(response);
-  }
+  return List<Map<String, dynamic>>.from(response);
+}
 
 Future<void> createFinancialEntry({
   required String clientId,

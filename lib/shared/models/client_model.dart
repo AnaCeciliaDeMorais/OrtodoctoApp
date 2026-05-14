@@ -1,45 +1,78 @@
 class ClientModel {
   final String id;
   final String name;
-  final String? rg;
-  final String? cpf;
+
   final String? phone;
+  final String? cpf;
+  final String? rg;
+
   final String? addressStreet;
   final String? addressNumber;
   final String? neighborhood;
   final String? city;
-  final DateTime? birthDate;
+
   final String? guardianName;
+  final String? guardianCpf;
+  final DateTime? birthDate;
+
+  final String? notes;
 
   ClientModel({
     required this.id,
     required this.name,
-    this.rg,
-    this.cpf,
     this.phone,
+    this.cpf,
+    this.rg,
+    this.birthDate,
     this.addressStreet,
     this.addressNumber,
     this.neighborhood,
     this.city,
-    this.birthDate,
     this.guardianName,
+    this.guardianCpf,
+    this.notes,
   });
 
   factory ClientModel.fromMap(Map<String, dynamic> map) {
     return ClientModel(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      rg: map['rg'] as String?,
-      cpf: map['cpf'] as String?,
-      phone: map['phone'] as String?,
-      addressStreet: map['address_street'] as String?,
-      addressNumber: map['address_number'] as String?,
-      neighborhood: map['neighborhood'] as String?,
-      city: map['city'] as String?,
-      birthDate: map['birth_date'] != null
-          ? DateTime.parse(map['birth_date'] as String)
-          : null,
-      guardianName: map['guardian_name'] as String?,
+      id: map['id'],
+      name: map['name'] ?? '',
+
+      phone: map['phone'],
+      cpf: map['cpf'],
+      rg: map['rg'],
+
+      addressStreet: map['street'],
+      addressNumber: map['number'],
+      neighborhood: map['neighborhood'],
+      city: map['city'],
+
+      guardianName: map['guardian_name'],
+      guardianCpf: map['guardian_cpf'],
+      birthDate: map['birth_date'] != null ? DateTime.parse(map['birth_date'] as String) : null,
+      notes: map['notes'],
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+
+      'phone': phone,
+      'cpf': cpf,
+      'rg': rg,
+      'birth_date': birthDate?.toIso8601String(),
+
+      'street': addressStreet,
+      'number': addressNumber,
+      'neighborhood': neighborhood,
+      'city': city,
+
+      'guardian_name': guardianName,
+      'guardian_cpf': guardianCpf,
+
+      'notes': notes,
+    };
   }
 }

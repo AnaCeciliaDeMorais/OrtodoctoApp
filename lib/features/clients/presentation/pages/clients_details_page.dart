@@ -23,6 +23,80 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
   int _selectedTabIndex = 0;
   ClientModel? _client;
 
+Future<void> _openEditClientForm() async {
+  final client = _client;
+  if (client == null) return;
+
+  final nameController = TextEditingController(text: client.name);
+  final rgController = TextEditingController(text: client.rg ?? '');
+  final cpfController = TextEditingController(text: client.cpf ?? '');
+  final phoneController = TextEditingController(text: client.phone ?? '');
+  final streetController = TextEditingController(text: client.addressStreet ?? '');
+  final numberController = TextEditingController(text: client.addressNumber ?? '');
+  final neighborhoodController = TextEditingController(text: client.neighborhood ?? '');
+  final cityController = TextEditingController(text: client.city ?? '');
+  final guardianNameController = TextEditingController(text: client.guardianName ?? '');
+  final guardianCpfController = TextEditingController(text: client.guardianCpf ?? '');
+
+  await showDialog(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
+        title: const Text('Editar cliente'),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
+              TextField(controller: rgController, decoration: const InputDecoration(labelText: 'RG')),
+              TextField(controller: cpfController, decoration: const InputDecoration(labelText: 'CPF')),
+              TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Telefone')),
+              TextField(controller: streetController, decoration: const InputDecoration(labelText: 'Rua')),
+              TextField(controller: numberController, decoration: const InputDecoration(labelText: 'Número')),
+              TextField(controller: neighborhoodController, decoration: const InputDecoration(labelText: 'Bairro')),
+              TextField(controller: cityController, decoration: const InputDecoration(labelText: 'Cidade')),
+              TextField(controller: guardianNameController, decoration: const InputDecoration(labelText: 'Responsável')),
+              TextField(controller: guardianCpfController, decoration: const InputDecoration(labelText: 'CPF do responsável')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await _repository.updatePatient(
+                id: widget.clientId,
+                name: nameController.text.trim(),
+                rg: rgController.text.trim(),
+                cpf: cpfController.text.trim(),
+                phone: phoneController.text.trim(),
+                addressStreet: streetController.text.trim(),
+                addressNumber: numberController.text.trim(),
+                neighborhood: neighborhoodController.text.trim(),
+                city: cityController.text.trim(),
+                guardianName: guardianNameController.text.trim(),
+                guardianCpf: guardianCpfController.text.trim(),
+              );
+
+              if (!mounted) return;
+
+              Navigator.pop(context);
+              await _loadClient();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cliente atualizado com sucesso')),
+              );
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
   Future<void> _openFinancialTypeOptions() async {
   await showModalBottomSheet(
     context: context,
@@ -579,7 +653,7 @@ Future<void> _deleteFinancialEntry(String id) async {
         Align(
           alignment: Alignment.centerRight,
           child: FilledButton.icon(
-            onPressed: () {},
+            onPressed: _openEditClientForm,
             icon: const Icon(Icons.edit_outlined),
             label: const Text('Editar'),
           ),
