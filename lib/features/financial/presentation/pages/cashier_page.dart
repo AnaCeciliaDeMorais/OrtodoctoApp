@@ -44,6 +44,37 @@ class _CashierPageState extends State<CashierPage> {
     }
   }
 
+    Future<void> _editPayment(PaymentModel payment) async {
+      final result = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (_) => _PaymentDialog(payment: payment),
+      );
+  
+      if (result != null) {
+        try {
+          await _repository.updatePayment(
+            paymentId: payment.id,
+            value: result['value'],
+            status: result['status'],
+            observation: result['observation'],
+            paymentMethod: result['paymentMethod'],
+          );
+          await _loadPayments();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Lançamento atualizado com sucesso')),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Erro ao atualizar lançamento: $e')),
+            );
+          }
+        }
+      }
+    }
+
   Future<void> _addPayment() async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -140,7 +171,7 @@ class _CashierPageState extends State<CashierPage> {
                     color: PdfColors.grey300,
                   ),
                   rowDecoration: pw.BoxDecoration(color: PdfColors.white),
-                  alternateRowDecoration: const pw.BoxDecoration(
+                  oddRowDecoration: const pw.BoxDecoration(
                     color: PdfColors.grey100,
                   ),
                   border: pw.TableBorder.all(color: PdfColors.grey),

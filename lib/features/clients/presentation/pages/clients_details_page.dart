@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../data/clients_repository.dart';
 import 'package:ortodoctor/shared/models/client_model.dart';
+import '../../../../repositories/client_repository.dart';
 
 class ClientDetailsPage extends StatefulWidget {
   final String clientId;
@@ -16,12 +17,458 @@ class ClientDetailsPage extends StatefulWidget {
 }
 
 class _ClientDetailsPageState extends State<ClientDetailsPage> {
-  final ClientsRepository _repository = ClientsRepository();
+  final ClientRepository _repository = ClientRepository();
 
   bool _isLoading = true;
   int _selectedTabIndex = 0;
   ClientModel? _client;
 
+  Future<void> _openFinancialTypeOptions() async {
+  await showModalBottomSheet(
+    context: context,
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.calendar_month),
+                title: const Text('Parcelamento'),
+                subtitle: const Text('Criar várias parcelas para o cliente'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openInstallmentForm();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_card),
+                title: const Text('Lançamento'),
+                subtitle: const Text('Criar uma pendência única'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openSingleFinancialEntryForm();
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _openInstallmentForm() async {
+  final valueController = TextEditingController();
+  final descriptionController = TextEditingController();
+  final installmentsController = TextEditingController(text: '1');
+
+  DateTime? firstInstallmentDate;
+
+  await showDialog(
+    context: context,
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Novo parcelamento'),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: valueController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Valor'),
+                  ),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: 'Descrição'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: firstInstallmentDate ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                      );
+
+                      if (picked != null) {
+                        setDialogState(() => firstInstallmentDate = picked);
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_today),
+                    label: Text(
+                      firstInstallmentDate == null
+                          ? 'Data da primeira parcela'
+                          : '${firstInstallmentDate!.day}/${firstInstallmentDate!.month}/${firstInstallmentDate!.year}',
+                    ),
+                  ),
+                  TextField(
+                    controller: installmentsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Quantidade de parcelas',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                  onPressed: () async {
+                      try {
+                        final value = double.tryParse(
+                          valueController.text.replaceAll(',', '.'),
+                        );
+
+                        final installments = int.tryParse(
+                          installmentsController.text,
+                        );
+
+                        if (value == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Informe um valor válido')),
+                          );
+                          return;
+                        }
+
+                        if (installments == null || installments <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Informe a quantidade de parcelas')),
+                          );
+                          return;
+                        }
+
+                        if (firstInstallmentDate == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Selecione a data da primeira parcela')),
+                          );
+                          return;
+                        }
+
+                        if (descriptionController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Informe a descrição')),
+                          );
+                          return;
+                        }
+
+                        final installmentGroupId = const Uuid().v4();
+
+                        for (int i = 0; i < installments; i++) {
+                          final dueDate = DateTime(
+                            firstInstallmentDate!.year,
+                            firstInstallmentDate!.month + i,
+                            firstInstallmentDate!.day,
+                          );
+
+                          await _repository.createFinancialEntry(
+                            clientId: widget.clientId,
+                            status: 'x',
+                            value: value,
+                            dueDate: dueDate,
+                            description:
+                                '${descriptionController.text.trim()} - ${i + 1}/$installments',
+                            entryType: 'installment',
+                            installmentGroupId: installmentGroupId,
+                            installmentNumber: i + 1,
+                            installmentTotal: installments,
+                          );
+                        }
+
+                        if (!mounted) return;
+
+                        Navigator.pop(context);
+                        setState(() {});
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Parcelamento criado com sucesso')),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao criar parcelamento: $e')),
+                        );
+                      }
+                    },
+                  child: const Text('Salvar'),
+                ),
+
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+  Future<void> _openSingleFinancialEntryForm({
+  Map<String, dynamic>? entry,
+    }) async {
+  final valueController = TextEditingController(
+    text: entry?['value']?.toString() ?? '',
+  );
+
+  final descriptionController = TextEditingController(
+    text: entry?['description'] ?? '',
+  );
+
+  DateTime? dueDate = entry?['due_date'] != null
+    ? DateTime.tryParse(entry!['due_date'])
+    : null;
+
+  await showDialog(
+    context: context,
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Novo lançamento'),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: valueController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Valor'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: dueDate ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                      );
+
+                      if (picked != null) {
+                        setDialogState(() => dueDate = picked);
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_today),
+                    label: Text(
+                      dueDate == null
+                          ? 'Data de vencimento'
+                          : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                    ),
+                  ),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: 'Descrição'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final value = double.tryParse(
+                    valueController.text.replaceAll(',', '.'),
+                  );
+
+                  if (value == null ||
+                      dueDate == null ||
+                      descriptionController.text.trim().isEmpty) {
+                    return;
+                  }
+
+                  if (entry == null) {
+                    await _repository.createFinancialEntry(
+                      clientId: widget.clientId,
+                      status: 'x',
+                      value: value,
+                      dueDate: dueDate!,
+                      description: descriptionController.text.trim(),
+                      entryType: 'launch',
+                    );
+                  } else {
+                    await _repository.updateFinancialEntry(
+                      id: entry['id'],
+                      status: 'x',
+                      value: value,
+                      dueDate: dueDate!,
+                      description: descriptionController.text.trim(),
+                    );
+                  }
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  setState(() {});
+                },
+                child: const Text('Salvar'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+  Future<void> _openFinancialForm({Map<String, dynamic>? entry}) async {
+  String status = entry?['status'] ?? 'x';
+  final valueController = TextEditingController(
+    text: entry?['value']?.toString() ?? '',
+  );
+
+  DateTime? dueDate = entry?['due_date'] != null
+      ? DateTime.tryParse(entry!['due_date'])
+      : null;
+
+  await showDialog(
+    context: context,
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(entry == null ? 'Nova pendência' : 'Editar pendência'),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: status,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: const [
+                      DropdownMenuItem(value: 'ok', child: Text('Ok - Pago')),
+                      DropdownMenuItem(value: 'x', child: Text('X - Não pago')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => status = value);
+                      }
+                    },
+                  ),
+                  TextField(
+                    controller: valueController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Valor'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: dueDate ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                      );
+
+                      if (picked != null) {
+                        setDialogState(() => dueDate = picked);
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_today),
+                    label: Text(
+                      dueDate == null
+                          ? 'Data vencimento'
+                          : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final value = double.tryParse(
+                    valueController.text.replaceAll(',', '.'),
+                  );
+
+                  if (value == null || dueDate == null) return;
+
+                  if (entry == null) {
+                    await _repository.createFinancialEntry(
+                      clientId: widget.clientId,
+                      status: status,
+                      value: value,
+                      dueDate: dueDate!,
+                    );
+                  } else {
+                    await _repository.updateFinancialEntry(
+                      id: entry['id'],
+                      status: status,
+                      value: value,
+                      dueDate: dueDate!,
+                    );
+                  }
+
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  setState(() {});
+                },
+                child: const Text('Salvar'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+Future<void> _openConfirmPayment(String entryId) async {
+  String paymentMethod = 'pix';
+
+  await showDialog(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
+        title: const Text('Confirmar pagamento'),
+        content: DropdownButtonFormField<String>(
+          value: paymentMethod,
+          decoration: const InputDecoration(labelText: 'Forma de pagamento'),
+          items: const [
+            DropdownMenuItem(value: 'boleto', child: Text('Boleto')),
+            DropdownMenuItem(value: 'pix', child: Text('Pix')),
+            DropdownMenuItem(value: 'dinheiro', child: Text('Dinheiro')),
+            DropdownMenuItem(value: 'cartao_credito', child: Text('Cartão de crédito')),
+            DropdownMenuItem(value: 'cartao_debito', child: Text('Cartão de débito')),
+          ],
+          onChanged: (value) {
+            if (value != null) paymentMethod = value;
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await _repository.confirmPayment(
+                id: entryId,
+                paymentMethod: paymentMethod,
+              );
+
+              if (!mounted) return;
+              Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('Confirmar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<void> _deleteFinancialEntry(String id) async {
+  await _repository.deleteFinancialEntry(id);
+  setState(() {});
+}
   @override
   void initState() {
     super.initState();
@@ -71,16 +518,16 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
     if (confirm != true) return;
 
     try {
-      await _repository.deleteClient(widget.clientId);
+      await _repository.deletePatient(widget.clientId);
 
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cliente excluído com sucesso')),
+        const SnackBar(content: Text('Paciente excluído com sucesso')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao excluir cliente: $e')),
+        SnackBar(content: Text('Erro ao excluir paciente: $e')),
       );
     }
   }
@@ -158,16 +605,223 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
   }
 
   Widget _buildFinancialTab() {
-    return const Center(
-      child: Text('Aba Financeiro'),
-    );
-  }
+  return FutureBuilder<List<Map<String, dynamic>>>(
+    future: _repository.getClientFinancialEntries(widget.clientId),
+    builder: (context, snapshot) {
+      final entries = snapshot.data ?? [];
 
-  Widget _buildAppointmentsTab() {
-    return const Center(
-      child: Text('Aba Agendamentos'),
-    );
-  }
+      return Scaffold(
+        backgroundColor: const Color(0xFFFBECEE),
+       floatingActionButton: FloatingActionButton(
+        onPressed: () => _openFinancialTypeOptions(),
+        child: const Icon(Icons.add),
+       ),
+        body: snapshot.connectionState == ConnectionState.waiting
+            ? const Center(child: CircularProgressIndicator())
+            : entries.isEmpty
+                ? const Center(child: Text('Nenhuma pendência cadastrada'))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: entries.length,
+                    itemBuilder: (context, index) {
+                      final entry = entries[index];
+                      final confirmed = entry['confirmed'] == true;
+
+                      return Card(
+                        child: ListTile(
+                          title: Text('R\$ ${entry['value']}'),
+                          subtitle: Text(
+                            'Status: ${confirmed ? 'Ok' : 'X'}\n'
+                            'Vencimento: ${entry['due_date'] ?? '-'}\n'
+                            'Forma de pagamento: ${entry['payment_method'] ?? '-'}',
+                          ),
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'confirm') {
+                                _openConfirmPayment(entry['id']);         
+                                } else if (value == 'edit') {
+                                  _openSingleFinancialEntryForm(
+                                    entry: entry,
+                                  );
+                              } else if (value == 'delete') {
+                                _deleteFinancialEntry(entry['id']);
+                              }
+                            },
+                            itemBuilder: (_) => [
+                              if (!confirmed)
+                                const PopupMenuItem(
+                                  value: 'confirm',
+                                  child: Text('Confirmar pagamento'),
+                                ),
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Editar'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Excluir'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+      );
+    },
+  );
+}
+
+Widget _buildAppointmentsTab() {
+  return FutureBuilder<List<Map<String, dynamic>>>(
+    future: _repository.getClientAppointments(widget.clientId),
+    builder: (context, snapshot) {
+      final appointments = snapshot.data ?? [];
+
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+
+      final attendedCount = appointments.where((appointment) {
+        final status =
+            appointment['attendance_status'] ?? appointment['status'];
+
+        return status == 'Atendido';
+      }).length;
+
+      final missedCount = appointments.where((appointment) {
+        final status =
+            appointment['attendance_status'] ?? appointment['status'];
+
+        return status == 'Faltou';
+      }).length;
+
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryCard(
+                  title: 'Atendidos',
+                  value: attendedCount.toString(),
+                  icon: Icons.check_circle_outline,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SummaryCard(
+                  title: 'Faltas',
+                  value: missedCount.toString(),
+                  icon: Icons.cancel_outlined,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Data',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Situação',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Observação',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          if (appointments.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: Center(
+                child: Text('Nenhum agendamento encontrado'),
+              ),
+            )
+          else
+            ...appointments.map((appointment) {
+              final status =
+                  appointment['attendance_status'] ??
+                  appointment['status'] ??
+                  '-';
+
+              final procedure =
+                  appointment['appointment_labels']?['name'] ??
+                  appointment['custom_label'] ??
+                  'Sem observação';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        appointment['clinic_date'] ?? '-',
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: status == 'Faltou'
+                              ? Colors.red
+                              : Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(procedure),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +841,10 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
                     ),
                     child: Row(
                       children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back),
+                        ),
                         Expanded(
                           child: Text(
                             _client?.name ?? 'Cliente',
@@ -250,6 +908,44 @@ class _InfoTile extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const _SummaryCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(title),
         ],
       ),
     );
