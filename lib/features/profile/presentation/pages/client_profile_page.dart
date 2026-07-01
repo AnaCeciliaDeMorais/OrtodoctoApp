@@ -57,8 +57,8 @@ class _ClientProfilePageState extends State<ClientProfilePage> {
   }
 
   String _formatAddress(ClientModel client) {
-    final street = client.addressStreet ?? '-';
-    final number = client.addressNumber ?? '';
+    final street = client.street ?? '-';
+    final number = client.number ?? '';
     final neighborhood = client.neighborhood ?? '-';
     final city = client.city ?? '-';
 
@@ -112,31 +112,41 @@ class _ClientProfilePageState extends State<ClientProfilePage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _infoTile('Nome', _client!.name),
-        _infoTile('Data de nascimento', _formatDate(_client!.birthDate)),
-        _infoTile('Endereço', _formatAddress(_client!)),
-        if (_client!.phone != null && _client!.phone!.isNotEmpty) ...[
-          _infoTile('Telefone', _client!.phone!),
-        ],
+        _readOnlyField('Nome', Icons.person, _client!.name),
+        _readOnlyField(
+          'Data de nascimento',
+          Icons.calendar_month,
+          _formatDate(_client!.birthDate),
+        ),
+        _readOnlyField('Telefone', Icons.phone, _client!.phone ?? '-'),
+        const SizedBox(height: 12),
+        Text(
+          'Dados de cadastro, não editáveis.',
+          style: TextStyle(color: Colors.grey.shade700),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Nome salvo para login: ${_client!.name}',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        ),
       ],
     );
   }
 
-  Widget _infoTile(String label, String value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
+  Widget _readOnlyField(String label, IconData icon, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        initialValue: value,
+        enabled: false,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          suffixIcon: const Icon(Icons.lock),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+        ),
       ),
     );
   }
@@ -154,10 +164,66 @@ class _ClientProfilePageState extends State<ClientProfilePage> {
             ? const Center(child: Text('Dados do cliente não encontrados.'))
             : Column(
                 children: [
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Perfil',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Perfil',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 18,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26.withOpacity(0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        const CircleAvatar(
+                          radius: 36,
+                          backgroundColor: Color(0xFFECECEC),
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          _client!.name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Meus Dados',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
                   ),
                   _tabs(),
                   Expanded(

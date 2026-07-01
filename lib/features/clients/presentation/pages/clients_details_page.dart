@@ -7,10 +7,7 @@ import '../../../../repositories/client_repository.dart';
 class ClientDetailsPage extends StatefulWidget {
   final String clientId;
 
-  const ClientDetailsPage({
-    super.key,
-    required this.clientId,
-  });
+  const ClientDetailsPage({super.key, required this.clientId});
 
   @override
   State<ClientDetailsPage> createState() => _ClientDetailsPageState();
@@ -23,526 +20,638 @@ class _ClientDetailsPageState extends State<ClientDetailsPage> {
   int _selectedTabIndex = 0;
   ClientModel? _client;
 
-Future<void> _openEditClientForm() async {
-  final client = _client;
-  if (client == null) return;
+  Future<void> _openEditClientForm() async {
+    final client = _client;
+    if (client == null) return;
 
-  final nameController = TextEditingController(text: client.name);
-  final rgController = TextEditingController(text: client.rg ?? '');
-  final cpfController = TextEditingController(text: client.cpf ?? '');
-  final phoneController = TextEditingController(text: client.phone ?? '');
-  final streetController = TextEditingController(text: client.addressStreet ?? '');
-  final numberController = TextEditingController(text: client.addressNumber ?? '');
-  final neighborhoodController = TextEditingController(text: client.neighborhood ?? '');
-  final cityController = TextEditingController(text: client.city ?? '');
-  final guardianNameController = TextEditingController(text: client.guardianName ?? '');
-  final guardianCpfController = TextEditingController(text: client.guardianCpf ?? '');
+    final nameController = TextEditingController(text: client.name);
+    final rgController = TextEditingController(text: client.rg ?? '');
+    final cpfController = TextEditingController(text: client.cpf ?? '');
+    final phoneController = TextEditingController(text: client.phone ?? '');
+    final streetController = TextEditingController(
+      text: client.street ?? '',
+    );
+    final numberController = TextEditingController(
+      text: client.number ?? '',
+    );
+    final neighborhoodController = TextEditingController(
+      text: client.neighborhood ?? '',
+    );
+    final cityController = TextEditingController(text: client.city ?? '');
+    final guardianNameController = TextEditingController(
+      text: client.guardianName ?? '',
+    );
+    final guardianCpfController = TextEditingController(
+      text: client.guardianCpf ?? '',
+    );
 
-  await showDialog(
-    context: context,
-    builder: (_) {
-      return AlertDialog(
-        title: const Text('Editar cliente'),
-        content: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
-              TextField(controller: rgController, decoration: const InputDecoration(labelText: 'RG')),
-              TextField(controller: cpfController, decoration: const InputDecoration(labelText: 'CPF')),
-              TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Telefone')),
-              TextField(controller: streetController, decoration: const InputDecoration(labelText: 'Rua')),
-              TextField(controller: numberController, decoration: const InputDecoration(labelText: 'Número')),
-              TextField(controller: neighborhoodController, decoration: const InputDecoration(labelText: 'Bairro')),
-              TextField(controller: cityController, decoration: const InputDecoration(labelText: 'Cidade')),
-              TextField(controller: guardianNameController, decoration: const InputDecoration(labelText: 'Responsável')),
-              TextField(controller: guardianCpfController, decoration: const InputDecoration(labelText: 'CPF do responsável')),
-            ],
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Editar cliente'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nome'),
+                ),
+                TextField(
+                  controller: rgController,
+                  decoration: const InputDecoration(labelText: 'RG'),
+                ),
+                TextField(
+                  controller: cpfController,
+                  decoration: const InputDecoration(labelText: 'CPF'),
+                ),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(labelText: 'Telefone'),
+                ),
+                TextField(
+                  controller: streetController,
+                  decoration: const InputDecoration(labelText: 'Rua'),
+                ),
+                TextField(
+                  controller: numberController,
+                  decoration: const InputDecoration(labelText: 'Número'),
+                ),
+                TextField(
+                  controller: neighborhoodController,
+                  decoration: const InputDecoration(labelText: 'Bairro'),
+                ),
+                TextField(
+                  controller: cityController,
+                  decoration: const InputDecoration(labelText: 'Cidade'),
+                ),
+                TextField(
+                  controller: guardianNameController,
+                  decoration: const InputDecoration(labelText: 'Responsável'),
+                ),
+                TextField(
+                  controller: guardianCpfController,
+                  decoration: const InputDecoration(
+                    labelText: 'CPF do responsável',
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              await _repository.updatePatient(
-                id: widget.clientId,
-                name: nameController.text.trim(),
-                rg: rgController.text.trim(),
-                cpf: cpfController.text.trim(),
-                phone: phoneController.text.trim(),
-                addressStreet: streetController.text.trim(),
-                addressNumber: numberController.text.trim(),
-                neighborhood: neighborhoodController.text.trim(),
-                city: cityController.text.trim(),
-                guardianName: guardianNameController.text.trim(),
-                guardianCpf: guardianCpfController.text.trim(),
-              );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await _repository.updatePatient(
+                  id: widget.clientId,
+                  name: nameController.text.trim(),
+                  rg: rgController.text.trim(),
+                  cpf: cpfController.text.trim(),
+                  phone: phoneController.text.trim(),
+                  street: streetController.text.trim(),
+                  number: numberController.text.trim(),
+                  neighborhood: neighborhoodController.text.trim(),
+                  city: cityController.text.trim(),
+                  guardianName: guardianNameController.text.trim(),
+                  guardianCpf: guardianCpfController.text.trim(),
+                );
 
-              if (!mounted) return;
+                if (!mounted) return;
 
-              Navigator.pop(context);
-              await _loadClient();
+                Navigator.pop(context);
+                await _loadClient();
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cliente atualizado com sucesso')),
-              );
-            },
-            child: const Text('Salvar'),
-          ),
-        ],
-      );
-    },
-  );
-}
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Cliente atualizado com sucesso'),
+                  ),
+                );
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _openFinancialTypeOptions() async {
-  await showModalBottomSheet(
-    context: context,
-    builder: (_) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.calendar_month),
-                title: const Text('Parcelamento'),
-                subtitle: const Text('Criar várias parcelas para o cliente'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _openInstallmentForm();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.add_card),
-                title: const Text('Lançamento'),
-                subtitle: const Text('Criar uma pendência única'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _openSingleFinancialEntryForm();
-                },
-              ),
-            ],
+    await showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.calendar_month),
+                  title: const Text('Parcelamento'),
+                  subtitle: const Text('Criar várias parcelas para o cliente'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openInstallmentForm();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.add_card),
+                  title: const Text('Lançamento'),
+                  subtitle: const Text('Criar uma pendência única'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openSingleFinancialEntryForm();
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
-Future<void> _openInstallmentForm() async {
-  final valueController = TextEditingController();
-  final descriptionController = TextEditingController();
-  final installmentsController = TextEditingController(text: '1');
+  Future<void> _openInstallmentForm() async {
+    final valueController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final installmentsController = TextEditingController(text: '1');
 
-  DateTime? firstInstallmentDate;
+    DateTime? firstInstallmentDate;
 
-  await showDialog(
-    context: context,
-    builder: (_) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Novo parcelamento'),
-            content: SingleChildScrollView(
-              child: Column(
-                children: [
-                  TextField(
-                    controller: valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Valor'),
-                  ),
-                  TextField(
-                    controller: descriptionController,
-                    decoration: const InputDecoration(labelText: 'Descrição'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: firstInstallmentDate ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Novo parcelamento'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: valueController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Valor'),
+                    ),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(labelText: 'Descrição'),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: firstInstallmentDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+
+                        if (picked != null) {
+                          setDialogState(() => firstInstallmentDate = picked);
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        firstInstallmentDate == null
+                            ? 'Data da primeira parcela'
+                            : '${firstInstallmentDate!.day}/${firstInstallmentDate!.month}/${firstInstallmentDate!.year}',
+                      ),
+                    ),
+                    TextField(
+                      controller: installmentsController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Quantidade de parcelas',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    try {
+                      final value = double.tryParse(
+                        valueController.text.replaceAll(',', '.'),
                       );
 
-                      if (picked != null) {
-                        setDialogState(() => firstInstallmentDate = picked);
+                      final installments = int.tryParse(
+                        installmentsController.text,
+                      );
+
+                      if (value == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Informe um valor válido'),
+                          ),
+                        );
+                        return;
                       }
-                    },
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(
-                      firstInstallmentDate == null
-                          ? 'Data da primeira parcela'
-                          : '${firstInstallmentDate!.day}/${firstInstallmentDate!.month}/${firstInstallmentDate!.year}',
-                    ),
-                  ),
-                  TextField(
-                    controller: installmentsController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Quantidade de parcelas',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                  onPressed: () async {
-                      try {
-                        final value = double.tryParse(
-                          valueController.text.replaceAll(',', '.'),
-                        );
 
-                        final installments = int.tryParse(
-                          installmentsController.text,
-                        );
-
-                        if (value == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Informe um valor válido')),
-                          );
-                          return;
-                        }
-
-                        if (installments == null || installments <= 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Informe a quantidade de parcelas')),
-                          );
-                          return;
-                        }
-
-                        if (firstInstallmentDate == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Selecione a data da primeira parcela')),
-                          );
-                          return;
-                        }
-
-                        if (descriptionController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Informe a descrição')),
-                          );
-                          return;
-                        }
-
-                        final installmentGroupId = const Uuid().v4();
-
-                        for (int i = 0; i < installments; i++) {
-                          final dueDate = DateTime(
-                            firstInstallmentDate!.year,
-                            firstInstallmentDate!.month + i,
-                            firstInstallmentDate!.day,
-                          );
-
-                          await _repository.createFinancialEntry(
-                            clientId: widget.clientId,
-                            status: 'x',
-                            value: value,
-                            dueDate: dueDate,
-                            description:
-                                '${descriptionController.text.trim()} - ${i + 1}/$installments',
-                            entryType: 'installment',
-                            installmentGroupId: installmentGroupId,
-                            installmentNumber: i + 1,
-                            installmentTotal: installments,
-                          );
-                        }
-
-                        if (!mounted) return;
-
-                        Navigator.pop(context);
-                        setState(() {});
-
+                      if (installments == null || installments <= 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Parcelamento criado com sucesso')),
+                          const SnackBar(
+                            content: Text('Informe a quantidade de parcelas'),
+                          ),
                         );
-                      } catch (e) {
+                        return;
+                      }
+
+                      if (firstInstallmentDate == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erro ao criar parcelamento: $e')),
+                          const SnackBar(
+                            content: Text(
+                              'Selecione a data da primeira parcela',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (descriptionController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Informe a descrição')),
+                        );
+                        return;
+                      }
+
+                      final installmentGroupId = const Uuid().v4();
+
+                      for (int i = 0; i < installments; i++) {
+                        final dueDate = DateTime(
+                          firstInstallmentDate!.year,
+                          firstInstallmentDate!.month + i,
+                          firstInstallmentDate!.day,
+                        );
+
+                        await _repository.createFinancialEntry(
+                          clientId: widget.clientId,
+                          status: 'x',
+                          value: value,
+                          dueDate: dueDate,
+                          description:
+                              '${descriptionController.text.trim()} - ${i + 1}/$installments',
+                          entryType: 'installment',
+                          installmentGroupId: installmentGroupId,
+                          installmentNumber: i + 1,
+                          installmentTotal: installments,
                         );
                       }
-                    },
+
+                      if (!mounted) return;
+
+                      Navigator.pop(context);
+                      setState(() {});
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Parcelamento criado com sucesso'),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Erro ao criar parcelamento: $e'),
+                        ),
+                      );
+                    }
+                  },
                   child: const Text('Salvar'),
                 ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
-            ],
-          );
-        },
-      );
-    },
-  );
-}
   Future<void> _openSingleFinancialEntryForm({
-  Map<String, dynamic>? entry,
-    }) async {
-  final valueController = TextEditingController(
-    text: entry?['value']?.toString() ?? '',
-  );
+    Map<String, dynamic>? entry,
+  }) async {
+    final valueController = TextEditingController(
+      text: entry?['value']?.toString() ?? '',
+    );
 
-  final descriptionController = TextEditingController(
-    text: entry?['description'] ?? '',
-  );
+    final descriptionController = TextEditingController(
+      text: entry?['description'] ?? '',
+    );
 
-  DateTime? dueDate = entry?['due_date'] != null
-    ? DateTime.tryParse(entry!['due_date'])
-    : null;
+    DateTime? dueDate = entry?['due_date'] != null
+        ? DateTime.tryParse(entry!['due_date'])
+        : null;
 
-  await showDialog(
-    context: context,
-    builder: (_) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Novo lançamento'),
-            content: SingleChildScrollView(
-              child: Column(
-                children: [
-                  TextField(
-                    controller: valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Valor'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: dueDate ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
-                      );
-
-                      if (picked != null) {
-                        setDialogState(() => dueDate = picked);
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(
-                      dueDate == null
-                          ? 'Data de vencimento'
-                          : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Novo lançamento'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: valueController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Valor'),
                     ),
-                  ),
-                  TextField(
-                    controller: descriptionController,
-                    decoration: const InputDecoration(labelText: 'Descrição'),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  final value = double.tryParse(
-                    valueController.text.replaceAll(',', '.'),
-                  );
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: dueDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
 
-                  if (value == null ||
-                      dueDate == null ||
-                      descriptionController.text.trim().isEmpty) {
-                    return;
-                  }
-
-                  if (entry == null) {
-                    await _repository.createFinancialEntry(
-                      clientId: widget.clientId,
-                      status: 'x',
-                      value: value,
-                      dueDate: dueDate!,
-                      description: descriptionController.text.trim(),
-                      entryType: 'launch',
-                    );
-                  } else {
-                    await _repository.updateFinancialEntry(
-                      id: entry['id'],
-                      status: 'x',
-                      value: value,
-                      dueDate: dueDate!,
-                      description: descriptionController.text.trim(),
-                    );
-                  }
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  setState(() {});
-                },
-                child: const Text('Salvar'),
+                        if (picked != null) {
+                          setDialogState(() => dueDate = picked);
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        dueDate == null
+                            ? 'Data de vencimento'
+                            : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                      ),
+                    ),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(labelText: 'Descrição'),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    final value = double.tryParse(
+                      valueController.text.replaceAll(',', '.'),
+                    );
+
+                    if (value == null ||
+                        dueDate == null ||
+                        descriptionController.text.trim().isEmpty) {
+                      return;
+                    }
+
+                    if (entry == null) {
+                      await _repository.createFinancialEntry(
+                        clientId: widget.clientId,
+                        status: 'x',
+                        value: value,
+                        dueDate: dueDate!,
+                        description: descriptionController.text.trim(),
+                        entryType: 'launch',
+                      );
+                    } else {
+                      await _repository.updateFinancialEntry(
+                        id: entry['id'],
+                        status: 'x',
+                        value: value,
+                        dueDate: dueDate!,
+                        description: descriptionController.text.trim(),
+                      );
+                    }
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    setState(() {});
+                  },
+                  child: const Text('Salvar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _openFinancialForm({Map<String, dynamic>? entry}) async {
-  String status = entry?['status'] ?? 'x';
-  final valueController = TextEditingController(
-    text: entry?['value']?.toString() ?? '',
-  );
+    String status = entry?['status'] ?? 'x';
+    final valueController = TextEditingController(
+      text: entry?['value']?.toString() ?? '',
+    );
 
-  DateTime? dueDate = entry?['due_date'] != null
-      ? DateTime.tryParse(entry!['due_date'])
-      : null;
+    DateTime? dueDate = entry?['due_date'] != null
+        ? DateTime.tryParse(entry!['due_date'])
+        : null;
 
-  await showDialog(
-    context: context,
-    builder: (_) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text(entry == null ? 'Nova pendência' : 'Editar pendência'),
-            content: SingleChildScrollView(
-              child: Column(
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                entry == null ? 'Nova pendência' : 'Editar pendência',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: status,
+                      decoration: const InputDecoration(labelText: 'Status'),
+                      items: const [
+                        DropdownMenuItem(value: 'ok', child: Text('Ok - Pago')),
+                        DropdownMenuItem(
+                          value: 'x',
+                          child: Text('X - Não pago'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => status = value);
+                        }
+                      },
+                    ),
+                    TextField(
+                      controller: valueController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Valor'),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: dueDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+
+                        if (picked != null) {
+                          setDialogState(() => dueDate = picked);
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        dueDate == null
+                            ? 'Data vencimento'
+                            : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    final value = double.tryParse(
+                      valueController.text.replaceAll(',', '.'),
+                    );
+
+                    if (value == null || dueDate == null) return;
+
+                    if (entry == null) {
+                      await _repository.createFinancialEntry(
+                        clientId: widget.clientId,
+                        status: status,
+                        value: value,
+                        dueDate: dueDate!,
+                      );
+                    } else {
+                      await _repository.updateFinancialEntry(
+                        id: entry['id'],
+                        status: status,
+                        value: value,
+                        dueDate: dueDate!,
+                      );
+                    }
+
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    setState(() {});
+                  },
+                  child: const Text('Salvar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openConfirmPayment(Map<String, dynamic> entry) async {
+    String paymentMethod = 'pix';
+    DateTime paymentDate = DateTime.now();
+
+    await showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Confirmar pagamento'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: status,
-                    decoration: const InputDecoration(labelText: 'Status'),
+                    value: paymentMethod,
+                    decoration: const InputDecoration(
+                      labelText: 'Forma de pagamento',
+                    ),
                     items: const [
-                      DropdownMenuItem(value: 'ok', child: Text('Ok - Pago')),
-                      DropdownMenuItem(value: 'x', child: Text('X - Não pago')),
+                      DropdownMenuItem(value: 'boleto', child: Text('Boleto')),
+                      DropdownMenuItem(value: 'pix', child: Text('Pix')),
+                      DropdownMenuItem(
+                        value: 'dinheiro',
+                        child: Text('Dinheiro'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'cartao_credito',
+                        child: Text('Cartão de crédito'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'cartao_debito',
+                        child: Text('Cartão de débito'),
+                      ),
                     ],
                     onChanged: (value) {
                       if (value != null) {
-                        setDialogState(() => status = value);
+                        setDialogState(() => paymentMethod = value);
                       }
                     },
                   ),
-                  TextField(
-                    controller: valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Valor'),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: dueDate ?? DateTime.now(),
+                        initialDate: paymentDate,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2100),
                       );
-
                       if (picked != null) {
-                        setDialogState(() => dueDate = picked);
+                        setDialogState(() => paymentDate = picked);
                       }
                     },
                     icon: const Icon(Icons.calendar_today),
                     label: Text(
-                      dueDate == null
-                          ? 'Data vencimento'
-                          : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                      '${paymentDate.day.toString().padLeft(2, '0')}/'
+                      '${paymentDate.month.toString().padLeft(2, '0')}/'
+                      '${paymentDate.year}',
                     ),
                   ),
                 ],
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  final value = double.tryParse(
-                    valueController.text.replaceAll(',', '.'),
-                  );
-
-                  if (value == null || dueDate == null) return;
-
-                  if (entry == null) {
-                    await _repository.createFinancialEntry(
-                      clientId: widget.clientId,
-                      status: status,
-                      value: value,
-                      dueDate: dueDate!,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    await _repository.confirmPayment(
+                      id: entry['id'] as String,
+                      paymentMethod: paymentMethod,
+                      paymentDate: paymentDate,
+                      patientId: entry['patient_id'] as String,
+                      paymentValue:
+                          double.tryParse(entry['value'].toString()) ?? 0,
+                      observation:
+                          entry['description']?.toString() ??
+                          'Pagamento confirmado',
                     );
-                  } else {
-                    await _repository.updateFinancialEntry(
-                      id: entry['id'],
-                      status: status,
-                      value: value,
-                      dueDate: dueDate!,
-                    );
-                  }
 
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  setState(() {});
-                },
-                child: const Text('Salvar'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-Future<void> _openConfirmPayment(String entryId) async {
-  String paymentMethod = 'pix';
-
-  await showDialog(
-    context: context,
-    builder: (_) {
-      return AlertDialog(
-        title: const Text('Confirmar pagamento'),
-        content: DropdownButtonFormField<String>(
-          value: paymentMethod,
-          decoration: const InputDecoration(labelText: 'Forma de pagamento'),
-          items: const [
-            DropdownMenuItem(value: 'boleto', child: Text('Boleto')),
-            DropdownMenuItem(value: 'pix', child: Text('Pix')),
-            DropdownMenuItem(value: 'dinheiro', child: Text('Dinheiro')),
-            DropdownMenuItem(value: 'cartao_credito', child: Text('Cartão de crédito')),
-            DropdownMenuItem(value: 'cartao_debito', child: Text('Cartão de débito')),
-          ],
-          onChanged: (value) {
-            if (value != null) paymentMethod = value;
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    setState(() {});
+                  },
+                  child: const Text('Confirmar'),
+                ),
+              ],
+            );
           },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              await _repository.confirmPayment(
-                id: entryId,
-                paymentMethod: paymentMethod,
-              );
+        );
+      },
+    );
+  }
 
-              if (!mounted) return;
-              Navigator.pop(context);
-              setState(() {});
-            },
-            child: const Text('Confirmar'),
-          ),
-        ],
-      );
-    },
-  );
-}
+  Future<void> _deleteFinancialEntry(String id) async {
+    await _repository.deleteFinancialEntry(id);
+    setState(() {});
+  }
 
-Future<void> _deleteFinancialEntry(String id) async {
-  await _repository.deleteFinancialEntry(id);
-  setState(() {});
-}
   @override
   void initState() {
     super.initState();
@@ -558,9 +667,9 @@ Future<void> _deleteFinancialEntry(String id) async {
         _client = client;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar ficha: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao carregar ficha: $e')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -600,9 +709,9 @@ Future<void> _deleteFinancialEntry(String id) async {
         const SnackBar(content: Text('Paciente excluído com sucesso')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao excluir paciente: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao excluir paciente: $e')));
     }
   }
 
@@ -663,8 +772,8 @@ Future<void> _deleteFinancialEntry(String id) async {
         _InfoTile(label: 'RG', value: client.rg),
         _InfoTile(label: 'CPF', value: client.cpf),
         _InfoTile(label: 'Telefone', value: client.phone),
-        _InfoTile(label: 'Rua', value: client.addressStreet),
-        _InfoTile(label: 'Número', value: client.addressNumber),
+        _InfoTile(label: 'Rua', value: client.street),
+        _InfoTile(label: 'Número', value: client.number),
         _InfoTile(label: 'Bairro', value: client.neighborhood),
         _InfoTile(label: 'Cidade', value: client.city),
         _InfoTile(label: 'Responsável', value: client.guardianName),
@@ -679,223 +788,263 @@ Future<void> _deleteFinancialEntry(String id) async {
   }
 
   Widget _buildFinancialTab() {
-  return FutureBuilder<List<Map<String, dynamic>>>(
-    future: _repository.getClientFinancialEntries(widget.clientId),
-    builder: (context, snapshot) {
-      final entries = snapshot.data ?? [];
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _repository.getClientFinancialEntries(widget.clientId),
+      builder: (context, snapshot) {
+        final entries = snapshot.data ?? [];
 
-      return Scaffold(
-        backgroundColor: const Color(0xFFFBECEE),
-       floatingActionButton: FloatingActionButton(
-        onPressed: () => _openFinancialTypeOptions(),
-        child: const Icon(Icons.add),
-       ),
-        body: snapshot.connectionState == ConnectionState.waiting
-            ? const Center(child: CircularProgressIndicator())
-            : entries.isEmpty
-                ? const Center(child: Text('Nenhuma pendência cadastrada'))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: entries.length,
-                    itemBuilder: (context, index) {
-                      final entry = entries[index];
-                      final confirmed = entry['confirmed'] == true;
-
-                      return Card(
-                        child: ListTile(
-                          title: Text('R\$ ${entry['value']}'),
-                          subtitle: Text(
-                            'Status: ${confirmed ? 'Ok' : 'X'}\n'
-                            'Vencimento: ${entry['due_date'] ?? '-'}\n'
-                            'Forma de pagamento: ${entry['payment_method'] ?? '-'}',
-                          ),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'confirm') {
-                                _openConfirmPayment(entry['id']);         
-                                } else if (value == 'edit') {
-                                  _openSingleFinancialEntryForm(
-                                    entry: entry,
-                                  );
-                              } else if (value == 'delete') {
-                                _deleteFinancialEntry(entry['id']);
-                              }
-                            },
-                            itemBuilder: (_) => [
-                              if (!confirmed)
-                                const PopupMenuItem(
-                                  value: 'confirm',
-                                  child: Text('Confirmar pagamento'),
-                                ),
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Editar'),
-                              ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Excluir'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-      );
-    },
-  );
-}
-
-Widget _buildAppointmentsTab() {
-  return FutureBuilder<List<Map<String, dynamic>>>(
-    future: _repository.getClientAppointments(widget.clientId),
-    builder: (context, snapshot) {
-      final appointments = snapshot.data ?? [];
-
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-
-      final attendedCount = appointments.where((appointment) {
-        final status =
-            appointment['attendance_status'] ?? appointment['status'];
-
-        return status == 'Atendido';
-      }).length;
-
-      final missedCount = appointments.where((appointment) {
-        final status =
-            appointment['attendance_status'] ?? appointment['status'];
-
-        return status == 'Faltou';
-      }).length;
-
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryCard(
-                  title: 'Atendidos',
-                  value: attendedCount.toString(),
-                  icon: Icons.check_circle_outline,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SummaryCard(
-                  title: 'Faltas',
-                  value: missedCount.toString(),
-                  icon: Icons.cancel_outlined,
-                ),
-              ),
-            ],
+        return Scaffold(
+          backgroundColor: const Color(0xFFFBECEE),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _openFinancialTypeOptions(),
+            child: const Icon(Icons.add),
           ),
+          body: snapshot.connectionState == ConnectionState.waiting
+              ? const Center(child: CircularProgressIndicator())
+              : entries.isEmpty
+              ? const Center(child: Text('Nenhuma pendência cadastrada'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final confirmed = entry['confirmed'] == true;
+                    final paidDateText = entry['payment_date'] != null
+                        ? () {
+                            final parsed = DateTime.tryParse(
+                              entry['payment_date'].toString(),
+                            );
+                            return parsed != null
+                                ? '${parsed.day.toString().padLeft(2, '0')}/'
+                                      '${parsed.month.toString().padLeft(2, '0')}/'
+                                      '${parsed.year}'
+                                : entry['payment_date'].toString();
+                          }()
+                        : null;
 
-          const SizedBox(height: 20),
+                    return Card(
+                      child: ListTile(
+                        title: Text('R\$ ${entry['value']}'),
+                        subtitle: Text(
+                          'Status: ${confirmed ? 'Ok' : 'X'}\n'
+                          'Vencimento: ${entry['due_date'] ?? '-'}\n'
+                          'Forma de pagamento: ${entry['payment_method'] ?? '-'}'
+                          '${paidDateText != null ? '\nPago em: $paidDateText' : ''}',
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'confirm') {
+                              _openConfirmPayment(entry);
+                            } else if (value == 'edit') {
+                              _openSingleFinancialEntryForm(entry: entry);
+                            } else if (value == 'delete') {
+                              _deleteFinancialEntry(entry['id']);
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            if (!confirmed)
+                              const PopupMenuItem(
+                                value: 'confirm',
+                                child: Text('Confirmar pagamento'),
+                              ),
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Editar'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Excluir'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
+    );
+  }
 
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 14,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Row(
+  Widget _buildAppointmentsTab() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _repository.getClientAppointments(widget.clientId),
+      builder: (context, snapshot) {
+        final appointments = snapshot.data ?? [];
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final attendedCount = appointments.where((appointment) {
+          final status =
+              appointment['attendance_status'] ?? appointment['status'];
+          return status == 'Atendido';
+        }).length;
+
+        final missedCount = appointments.where((appointment) {
+          final status =
+              appointment['attendance_status'] ?? appointment['status'];
+          return status == 'Faltou';
+        }).length;
+
+        final observationCounter = <String, int>{};
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Data',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: _SummaryCard(
+                    title: 'Atendidos',
+                    value: attendedCount.toString(),
+                    icon: Icons.check_circle_outline,
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Situação',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Observação',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: _SummaryCard(
+                    title: 'Faltas',
+                    value: missedCount.toString(),
+                    icon: Icons.cancel_outlined,
                   ),
                 ),
               ],
             ),
-          ),
 
-          const SizedBox(height: 8),
+            const SizedBox(height: 20),
 
-          if (appointments.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 40),
-              child: Center(
-                child: Text('Nenhum agendamento encontrado'),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
               ),
-            )
-          else
-            ...appointments.map((appointment) {
-              final status =
-                  appointment['attendance_status'] ??
-                  appointment['status'] ??
-                  '-';
-
-              final procedure =
-                  appointment['appointment_labels']?['name'] ??
-                  appointment['custom_label'] ??
-                  'Sem observação';
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        appointment['clinic_date'] ?? '-',
-                      ),
+              child: const Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Data',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Expanded(
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          color: status == 'Faltou'
-                              ? Colors.red
-                              : Colors.green,
-                          fontWeight: FontWeight.bold,
+                  ),
+                  Expanded(
+                    child: Text(
+                      'Situação',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      'Observação',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            if (appointments.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 40),
+                child: Center(child: Text('Nenhum agendamento encontrado')),
+              )
+            else
+              ...appointments.map((appointment) {
+                final status =
+                    appointment['attendance_status'] ??
+                    appointment['status'] ??
+                    '-';
+
+                final observation =
+                    appointment['notes']?.toString().trim().isNotEmpty == true
+                    ? appointment['notes'].toString().trim()
+                    : 'Sem observação';
+
+                final observationKey = observation.toLowerCase();
+
+                observationCounter[observationKey] =
+                    (observationCounter[observationKey] ?? 0) + 1;
+
+                final observationNumber = observationCounter[observationKey]!;
+
+                Color statusColor;
+                if (status == 'Atendido') {
+                  statusColor = Colors.green;
+                } else if (status == 'Faltou') {
+                  statusColor = Colors.black;
+                } else {
+                  statusColor = Colors.amber;
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(appointment['clinic_date'] ?? '-'),
+                            const SizedBox(height: 4),
+                            Text(
+                              appointment['time_slot'] ?? '-',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(procedure),
-                    ),
-                  ],
-                ),
-              );
-            }),
-        ],
-      );
-    },
-  );
-}
+
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                status,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Expanded(
+                        flex: 2,
+                        child: Text('$observation $observationNumber'),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -936,8 +1085,8 @@ Widget _buildAppointmentsTab() {
                     child: _selectedTabIndex == 0
                         ? _buildDataTab()
                         : _selectedTabIndex == 1
-                            ? _buildFinancialTab()
-                            : _buildAppointmentsTab(),
+                        ? _buildFinancialTab()
+                        : _buildAppointmentsTab(),
                   ),
                 ],
               ),
@@ -950,10 +1099,7 @@ class _InfoTile extends StatelessWidget {
   final String label;
   final String? value;
 
-  const _InfoTile({
-    required this.label,
-    required this.value,
-  });
+  const _InfoTile({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -969,18 +1115,12 @@ class _InfoTile extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
           const SizedBox(height: 4),
           Text(
             (value?.trim().isNotEmpty ?? false) ? value! : '-',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -1013,10 +1153,7 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(title),

@@ -1,16 +1,23 @@
 class AppointmentLabelModel {
   final String id;
   final String name;
+  final DateTime? createdAt;
 
-  AppointmentLabelModel({
+  const AppointmentLabelModel({
     required this.id,
     required this.name,
+    this.createdAt,
   });
 
-  factory AppointmentLabelModel.fromMap(Map<String, dynamic> map) {
+  factory AppointmentLabelModel.fromMap(
+    Map<String, dynamic> map,
+  ) {
     return AppointmentLabelModel(
-      id: map['id'] as String,
-      name: map['name'] as String,
+      id: map['id'],
+      name: map['name'],
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'])
+          : null,
     );
   }
 }

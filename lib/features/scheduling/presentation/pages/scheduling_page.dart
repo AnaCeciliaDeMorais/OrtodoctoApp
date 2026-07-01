@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/scheduling_repository.dart';
 import '../../models/appointment_model.dart';
+import '../../models/appointment_reminder_model.dart';
 import '../../models/clinic_day_model.dart';
 import '../widgets/appointment_editor_sheet.dart';
 import '../widgets/reminders_section.dart';
@@ -26,8 +27,9 @@ class _SchedulingPageState extends State<SchedulingPage> {
 
   List<AppointmentModel> _appointments = [];
   List<ClinicDayModel> _clinicDays = [];
+  List<AppointmentReminderModel> _reminders = [];
 
-  bool get _isAlpha => widget.profileLevel == 'staff_alpha';
+  bool get _isAlpha => widget.profileLevel == 'staff_alfa';
   bool get _isClient => widget.profileLevel == 'client';
 
   @override
@@ -120,6 +122,8 @@ class _SchedulingPageState extends State<SchedulingPage> {
           _appointments = appointments;
         });
       }
+
+      await _loadReminders();
     } catch (e) {
       _showMessage('Erro ao carregar agenda: $e');
     } finally {
@@ -156,12 +160,14 @@ class _SchedulingPageState extends State<SchedulingPage> {
     _loadAppointmentsByDate(_selectedDate.add(const Duration(days: 1)));
   }
 
-  AppointmentModel? _findAppointmentBySlot(String time) {
-    try {
-      return _appointments.firstWhere((item) => item.timeSlot == time);
-    } catch (_) {
-      return null;
-    }
+  String _normalizeTime(String time) {
+    return time.length >= 5 ? time.substring(0, 5) : time;
+  }
+
+  List<AppointmentModel> _findAppointmentsBySlot(String time) {
+    return _appointments.where((item) {
+      return _normalizeTime(item.timeSlot) == _normalizeTime(time);
+    }).toList();
   }
 
   Future<void> _openCreateSheet(String time) async {
@@ -202,12 +208,53 @@ class _SchedulingPageState extends State<SchedulingPage> {
   }
 
   Future<void> _openReminderSheet() async {
-    await showModalBottomSheet(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const ReminderEditorSheet(),
+      builder: (_) => ReminderEditorSheet(appointments: _appointments),
     );
+
+    if (result != null) {
+      final appointmentId = result['appointmentId'] as String?;
+      if (appointmentId == null) {
+        _showMessage('Selecione um agendamento para salvar o lembrete');
+        return;
+      }
+
+      try {
+        await _repository.createReminder(
+          appointmentId: appointmentId,
+          reminderText: result['reminderText'] as String,
+          showOnDate: result['showOnDate'] as DateTime,
+        );
+        await _loadReminders();
+        _showMessage('Lembrete salvo com sucesso');
+      } catch (e) {
+        _showMessage('Erro ao salvar lembrete: $e');
+      }
+    }
+  }
+
+  Future<void> _loadReminders() async {
+    try {
+      final reminders = await _repository.getReminders();
+      if (mounted) {
+        setState(() => _reminders = reminders);
+      }
+    } catch (e) {
+      _showMessage('Erro ao carregar lembretes: $e');
+    }
+  }
+
+  Future<void> _deleteReminder(String id) async {
+    try {
+      await _repository.deleteReminder(id);
+      await _loadReminders();
+      _showMessage('Lembrete excluído com sucesso');
+    } catch (e) {
+      _showMessage('Erro ao excluir lembrete: $e');
+    }
   }
 
   void _showMessage(String message) {
@@ -354,8 +401,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
                                       color: Color(0xFFC62828),
                                     ),
                                   ),
-                                  if (appointment.notes != null &&
-                                      appointment.notes!.isNotEmpty) ...[
+                                  if (appointment.notes?.isNotEmpty == true) ...[
                                     const SizedBox(height: 8),
                                     Text(
                                       'Observações: ${appointment.notes}',
@@ -372,7 +418,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
                           const SizedBox(height: 16),
                         ],
                       );
-                    }).toList(),
+                    }),
                 ],
               ),
             ),
@@ -522,8 +568,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
             itemCount: slots.length,
             itemBuilder: (context, index) {
               final time = slots[index];
-              final item = _findAppointmentBySlot(time);
-              final bool isOccupied = item != null;
+              final items = _findAppointmentsBySlot(time);
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -544,71 +589,110 @@ class _SchedulingPageState extends State<SchedulingPage> {
                       ),
                     ),
                     Expanded(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(18),
-                        onTap: () {
-                          if (item == null) {
-                            _openCreateSheet(time);
-                          } else {
-                            _openEditSheet(item);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isOccupied
-                                ? const Color(0xFFFFE2E2)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: isOccupied
-                                  ? const Color(0xFFE57373)
-                                  : const Color(0xFFF0D3D7),
-                              width: 1.2,
-                            ),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: items.isNotEmpty
+                              ? const Color(0xFFFFE2E2)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: items.isNotEmpty
+                                ? const Color(0xFFE57373)
+                                : const Color(0xFFF0D3D7),
+                            width: 1.2,
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item?.patientName ?? 'Livre',
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (items.isEmpty)
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Livre',
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
-                                        color: isOccupied
-                                            ? const Color(0xFFB71C1C)
-                                            : Colors.black,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      item == null
-                                          ? 'Toque para agendar'
-                                          : 'Horário ocupado',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isOccupied
-                                            ? const Color(0xFFC62828)
-                                            : Colors.black.withOpacity(0.65),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _openCreateSheet(time),
+                                    icon: const Icon(Icons.add_circle_outline),
+                                  ),
+                                ],
+                              )
+                            else ...[
+                              ...items.map((appointment) {
+                                final status =
+                                    appointment.attendanceStatus ??
+                                    appointment.status;
+
+                                Color statusColor;
+
+                                if (status == 'Atendido') {
+                                  statusColor = Colors.green;
+                                } else if (status == 'Faltou') {
+                                  statusColor = Colors.black;
+                                } else if (status == 'Em Espera') {
+                                  statusColor = Colors.amber;
+                                } else {
+                                  statusColor = Colors.grey;
+                                }
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: statusColor,
+                                          shape: BoxShape.circle,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          appointment.patientName ?? 'Paciente',
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFFB71C1C),
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Editar agendamento',
+                                        onPressed: () =>
+                                            _openEditSheet(appointment),
+                                        icon: const Icon(Icons.edit_outlined),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+
+                              if (items.length < 2)
+                                TextButton.icon(
+                                  onPressed: () => _openCreateSheet(time),
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  label: const Text('Adicionar outro paciente'),
+                                )
+                              else
+                                const Text(
+                                  'Limite de 2 pacientes neste horário',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Icon(
-                                item == null
-                                    ? Icons.add_circle_outline
-                                    : Icons.edit_outlined,
-                                color: Colors.black54,
-                              ),
                             ],
-                          ),
+                          ],
                         ),
                       ),
                     ),
@@ -623,7 +707,11 @@ class _SchedulingPageState extends State<SchedulingPage> {
   }
 
   Widget _buildRemindersTab() {
-    return RemindersSection(onAddReminder: _openReminderSheet);
+    return RemindersSection(
+      onAddReminder: _openReminderSheet,
+      reminders: _reminders,
+      onDeleteReminder: _deleteReminder,
+    );
   }
 
   @override
@@ -661,7 +749,7 @@ class _SchedulingPageState extends State<SchedulingPage> {
             : Column(
                 children: [
                   _buildTopTabs(),
-                  _buildStaffAlphaEditButton(),
+                  if (_isAlpha) _buildStaffAlphaEditButton(),
                   Expanded(
                     child: _selectedTabIndex == 0
                         ? _buildAppointmentsTab()

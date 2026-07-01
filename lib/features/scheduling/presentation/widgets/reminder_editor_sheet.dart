@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../models/appointment_model.dart';
+
 class ReminderEditorSheet extends StatefulWidget {
-  const ReminderEditorSheet({super.key});
+  final List<AppointmentModel> appointments;
+
+  const ReminderEditorSheet({super.key, required this.appointments});
 
   @override
   State<ReminderEditorSheet> createState() => _ReminderEditorSheetState();
@@ -9,21 +13,54 @@ class ReminderEditorSheet extends StatefulWidget {
 
 class _ReminderEditorSheetState extends State<ReminderEditorSheet> {
   final TextEditingController _notesController = TextEditingController();
-  DateTime? _selectedDate;
+  DateTime? _selectedReminderDate;
+  String? _selectedAppointmentId;
 
   Future<void> _pickDate() async {
-  final picked = await showDatePicker(
-    context: context,
-    locale: const Locale('pt', 'BR'), // 👈 FORÇA português aqui também
-    initialDate: _selectedDate ?? DateTime.now(),
-    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-  );
+    final picked = await showDatePicker(
+      context: context,
+      locale: const Locale('pt', 'BR'), // 👈 FORÇA português aqui também
+      initialDate: _selectedReminderDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
 
-  if (picked != null) {
-    setState(() => _selectedDate = picked);
+    if (picked != null) {
+      setState(() => _selectedReminderDate = picked);
+    }
   }
-}
+
+  void _saveReminder() {
+    final reminderText = _notesController.text.trim();
+    if (_selectedAppointmentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione um agendamento para o lembrete'),
+        ),
+      );
+      return;
+    }
+
+    if (_selectedReminderDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione a data do lembrete')),
+      );
+      return;
+    }
+
+    if (reminderText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Informe a descrição do lembrete')),
+      );
+      return;
+    }
+
+    Navigator.pop(context, {
+      'appointmentId': _selectedAppointmentId!,
+      'reminderText': reminderText,
+      'showOnDate': _selectedReminderDate!,
+    });
+  }
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/'
@@ -56,13 +93,34 @@ class _ReminderEditorSheetState extends State<ReminderEditorSheet> {
               const Center(
                 child: Text(
                   'Adicionar lembrete',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(height: 20),
+              if (widget.appointments.isEmpty)
+                const Text(
+                  'Não há agendamentos disponíveis para associar o lembrete.',
+                  style: TextStyle(color: Colors.black54),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: _selectedAppointmentId,
+                  decoration: const InputDecoration(labelText: 'Agendamento'),
+                  items: widget.appointments.map((appointment) {
+                    final appointmentLabel =
+                        '${appointment.patientName ?? 'Paciente'} • ${appointment.timeSlot} • ${_formatDate(appointment.clinicDate)}';
+                    return DropdownMenuItem(
+                      value: appointment.id,
+                      child: Text(appointmentLabel),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedAppointmentId = value;
+                    });
+                  },
+                ),
+              const SizedBox(height: 16),
               InkWell(
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(12),
@@ -72,12 +130,12 @@ class _ReminderEditorSheetState extends State<ReminderEditorSheet> {
                     children: [
                       Expanded(
                         child: Text(
-                          _selectedDate == null
+                          _selectedReminderDate == null
                               ? 'Selecione a data'
-                              : _formatDate(_selectedDate!),
+                              : _formatDate(_selectedReminderDate!),
                           style: TextStyle(
                             fontSize: 16,
-                            color: _selectedDate == null
+                            color: _selectedReminderDate == null
                                 ? Colors.grey.shade700
                                 : Colors.black,
                           ),
@@ -99,9 +157,7 @@ class _ReminderEditorSheetState extends State<ReminderEditorSheet> {
               ),
               const SizedBox(height: 20),
               FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: widget.appointments.isEmpty ? null : _saveReminder,
                 child: const Text('Salvar lembrete'),
               ),
             ],

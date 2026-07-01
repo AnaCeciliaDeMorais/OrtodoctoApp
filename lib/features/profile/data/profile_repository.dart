@@ -6,7 +6,7 @@ import '../models/treatment_item_model.dart';
 
 class ProfileRepository {
   ProfileRepository({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
 
@@ -24,14 +24,15 @@ class ProfileRepository {
     return ProfileEmployeeModel.fromMap(response);
   }
 
-  Future<List<CashEntryModel>> getMyCashEntries() async {
+  Future<List<CashEntryModel>> getMyCashEntries({bool showAll = false}) async {
     final userId = currentUser!.id;
 
-    final response = await _client
-        .from('cash_entries')
-        .select()
-        .eq('created_by', userId)
-        .order('created_at', ascending: false);
+    final query = _client.from('cash_entries').select();
+    if (!showAll) {
+      query.eq('created_by', userId);
+    }
+
+    final response = await query.order('created_at', ascending: false);
 
     return (response as List)
         .map((e) => CashEntryModel.fromMap(e as Map<String, dynamic>))

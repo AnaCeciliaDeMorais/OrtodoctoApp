@@ -10,10 +10,7 @@ import 'widgets/staff_alfa_cash_summary.dart';
 class ProfilePage extends StatefulWidget {
   final AppThemeController themeController;
 
-  const ProfilePage({
-    super.key,
-    required this.themeController,
-  });
+  const ProfilePage({super.key, required this.themeController});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -35,270 +32,276 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openAddCashEntrySheet() async {
-  final valueController = TextEditingController();
-  final reasonController = TextEditingController();
-  final methodController = TextEditingController();
-  String selectedStatus = 'entrada';
-  DateTime selectedDate = DateTime.now();
+    final valueController = TextEditingController();
+    final reasonController = TextEditingController();
+    final methodController = TextEditingController();
+    String selectedStatus = 'entrada';
+    DateTime selectedDate = DateTime.now();
 
-  final saved = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) {
-      final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        final bottom = MediaQuery.of(context).viewInsets.bottom;
 
-      return StatefulBuilder(
-        builder: (context, setModalState) {
-          return Container(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Center(
-                      child: Text(
-                        'Nova movimentação',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedStatus,
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'entrada',
-                          child: Text('Entrada'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'saida',
-                          child: Text('Saída'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setModalState(() {
-                            selectedStatus = value;
-                          });
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Tipo',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: valueController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Valor',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        '${selectedDate.day.toString().padLeft(2, '0')}/'
-                        '${selectedDate.month.toString().padLeft(2, '0')}/'
-                        '${selectedDate.year}',
-                      ),
-                      trailing: const Icon(Icons.calendar_month),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                          lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-                        );
-
-                        if (picked != null) {
-                          setModalState(() {
-                            selectedDate = picked;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: reasonController,
-                      decoration: const InputDecoration(
-                        labelText: 'Motivo',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: methodController,
-                      decoration: const InputDecoration(
-                        labelText: 'Forma de pagamento',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: () async {
-                        final rawValue = valueController.text
-                            .replaceAll('.', '')
-                            .replaceAll(',', '.');
-
-                        final parsedValue = double.tryParse(rawValue);
-
-                        if (parsedValue == null) return;
-
-                        await _repository.insertCashEntry(
-                          status: selectedStatus,
-                          value: selectedStatus == 'saida'
-                              ? -parsedValue
-                              : parsedValue,
-                          paymentDate: selectedDate,
-                          reason: reasonController.text.trim(),
-                          paymentMethod: methodController.text.trim(),
-                        );
-
-                        if (!mounted) return;
-                        Navigator.pop(context, true);
-                      },
-                      child: const Text('Salvar'),
-                    ),
-                  ],
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
-
-  valueController.dispose();
-  reasonController.dispose();
-  methodController.dispose();
-
-  if (saved == true) {
-    await _load();
-  }
-}
-
-  Future<void> _openAddTreatmentSheet() async {
-        String selectedType = 'Tratamento';
-        final notesController = TextEditingController();
-
-        final saved = await showModalBottomSheet<bool>(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) {
-            final bottom = MediaQuery.of(context).viewInsets.bottom;
-
-            return StatefulBuilder(
-              builder: (context, setModalState) {
-                return Container(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Center(
-                            child: Text(
-                              'Adicionar',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Center(
+                        child: Text(
+                          'Nova movimentação',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 20),
-                          DropdownButtonFormField<String>(
-                            initialValue: selectedType,
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'Tratamento',
-                                child: Text('Tratamento'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Promoção',
-                                child: Text('Promoção'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                setModalState(() {
-                                  selectedType = value;
-                                });
-                              }
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Promoção ou Serviço?',
-                              border: OutlineInputBorder(),
-                            ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedStatus,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'entrada',
+                            child: Text('Entrada'),
                           ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: notesController,
-                            maxLines: 4,
-                            decoration: const InputDecoration(
-                              labelText: 'Observações',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          FilledButton(
-                            onPressed: () async {
-                              await _repository.insertTreatment(
-                                title: selectedType,
-                                description: notesController.text.trim().isEmpty
-                                    ? null
-                                    : notesController.text.trim(),
-                                isPromotion: selectedType == 'Promoção',
-                              );
-
-                              if (!mounted) return;
-                              Navigator.pop(context, true);
-                            },
-                            child: const Text('Salvar'),
-                          ),
-                          const SizedBox(height: 8),
-                          OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancelar'),
+                          DropdownMenuItem(
+                            value: 'saida',
+                            child: Text('Saída'),
                           ),
                         ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setModalState(() {
+                              selectedStatus = value;
+                            });
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: valueController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Valor',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          '${selectedDate.day.toString().padLeft(2, '0')}/'
+                          '${selectedDate.month.toString().padLeft(2, '0')}/'
+                          '${selectedDate.year}',
+                        ),
+                        trailing: const Icon(Icons.calendar_month),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365 * 2),
+                            ),
+                          );
+
+                          if (picked != null) {
+                            setModalState(() {
+                              selectedDate = picked;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: reasonController,
+                        decoration: const InputDecoration(
+                          labelText: 'Motivo',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: methodController,
+                        decoration: const InputDecoration(
+                          labelText: 'Forma de pagamento',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: () async {
+                          final rawValue = valueController.text
+                              .replaceAll('.', '')
+                              .replaceAll(',', '.');
+
+                          final parsedValue = double.tryParse(rawValue);
+
+                          if (parsedValue == null) return;
+
+                          await _repository.insertCashEntry(
+                            status: selectedStatus,
+                            value: selectedStatus == 'saida'
+                                ? -parsedValue
+                                : parsedValue,
+                            paymentDate: selectedDate,
+                            reason: reasonController.text.trim(),
+                            paymentMethod: methodController.text.trim(),
+                          );
+
+                          if (!mounted) return;
+                          Navigator.pop(context, true);
+                        },
+                        child: const Text('Salvar'),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+              ),
             );
           },
         );
+      },
+    );
 
-        notesController.dispose();
+    valueController.dispose();
+    reasonController.dispose();
+    methodController.dispose();
 
-        if (saved == true) {
-          await _load();
-        }
-      }
+    if (saved == true) {
+      await _load();
+    }
+  }
+
+  Future<void> _openAddTreatmentSheet() async {
+    String selectedType = 'Tratamento';
+    final notesController = TextEditingController();
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        final bottom = MediaQuery.of(context).viewInsets.bottom;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Center(
+                        child: Text(
+                          'Adicionar',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedType,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Tratamento',
+                            child: Text('Tratamento'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Promoção',
+                            child: Text('Promoção'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setModalState(() {
+                              selectedType = value;
+                            });
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Promoção ou Serviço?',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: notesController,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'Observações',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: () async {
+                          await _repository.insertTreatment(
+                            title: selectedType,
+                            description: notesController.text.trim().isEmpty
+                                ? null
+                                : notesController.text.trim(),
+                            isPromotion: selectedType == 'Promoção',
+                          );
+
+                          if (!mounted) return;
+                          Navigator.pop(context, true);
+                        },
+                        child: const Text('Salvar'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    notesController.dispose();
+
+    if (saved == true) {
+      await _load();
+    }
+  }
 
   Future<void> _load() async {
     final profile = await _repository.getMyProfile();
-    final cash = await _repository.getMyCashEntries();
+    final cash = await _repository.getMyCashEntries(
+      showAll: profile.profileLevel == 'staff_alfa',
+    );
     final treatments = await _repository.getMyTreatments();
 
     setState(() {
@@ -338,7 +341,9 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
-                  color: selected ? const Color(0xFFF7D8DB) : Colors.transparent,
+                  color: selected
+                      ? const Color(0xFFF7D8DB)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
@@ -381,7 +386,10 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Text(label, style: TextStyle(color: Colors.grey.shade700)),
           const SizedBox(height: 4),
-          Text(value ?? '-', style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            value ?? '-',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
@@ -444,10 +452,7 @@ class _ProfilePageState extends State<ProfilePage> {
               final e = _cash[i];
 
               return ListTile(
-                leading: Icon(
-                  Icons.arrow_circle_down,
-                  color: Colors.green,
-                ),
+                leading: Icon(Icons.arrow_circle_down, color: Colors.green),
                 title: Text(
                   'R\$ ${e.value.toStringAsFixed(2).replaceAll('.', ',')}',
                 ),
@@ -477,7 +482,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -536,9 +541,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Text(e.title),
-          ),
+          Expanded(child: Text(e.title)),
           const Icon(Icons.more_vert),
         ],
       ),
@@ -563,8 +566,8 @@ class _ProfilePageState extends State<ProfilePage> {
             child: _tabIndex == 0
                 ? _meusDados()
                 : _tabIndex == 1
-                    ? const StaffAlfaCashSummary()
-                    : _tratamentos(),
+                ? const StaffAlfaCashSummary()
+                : _tratamentos(),
           ),
         ],
       ),

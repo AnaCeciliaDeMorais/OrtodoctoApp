@@ -18,11 +18,27 @@ class _ContactsPageState extends State<ContactsPage> {
     _companiesFuture = _getCompanies();
   }
 
+  Future<String> _generateUniqueCompanyCode() async {
+    final supabase = Supabase.instance.client;
+
+    // Gera um código numérico de 3 dígitos baseado no timestamp e tenta garantir unicidade
+    for (var i = 0; i < 10; i++) {
+      final code = (DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0');
+      final exists = await supabase.from('companies').select('id').eq('code', code).limit(1).maybeSingle();
+      if (exists == null) return code;
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
+    // Fallback: gerar código aleatório
+    final randomCode = (DateTime.now().millisecondsSinceEpoch % 100000).toString();
+    return randomCode;
+  }
+
   Future<List<Map<String, dynamic>>> _getCompanies() async {
     try {
       final response = await supabase
           .from('companies')
-          .select()
+          .select('id, name, location, code, created_by, created_at')
           .order('name', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
@@ -35,7 +51,6 @@ class _ContactsPageState extends State<ContactsPage> {
   void _openAddCompanySheet() {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
-    final codeController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -71,28 +86,50 @@ class _ContactsPageState extends State<ContactsPage> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: codeController,
-                decoration: const InputDecoration(
-                  labelText: 'Código',
-                  border: OutlineInputBorder(),
-                ),
-              ),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () async {
-                  if (nameController.text.trim().isEmpty) return;
+                  final name = nameController.text.trim();
+                  final location = locationController.text.trim();
 
-                  await supabase.from('companies').insert({
-                    'name': nameController.text.trim(),
-                    'location': locationController.text.trim(),
-                    'code': codeController.text.trim(),
-                  });
+                  if (name.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Informe o nome da empresa')),
+                    );
+                    return;
+                  }
 
-                  if (mounted) {
-                    Navigator.pop(context);
-                    setState(() {});
+                  try {
+                    final code = await _generateUniqueCompanyCode();
+                    final payload = <String, dynamic>{
+                      'name': name,
+                      'location': location,
+                      'code': code,
+                    };
+
+                    final currentUserId = supabase.auth.currentUser?.id;
+                    if (currentUserId != null) {
+                      payload['created_by'] = currentUserId;
+                    }
+
+                    await supabase.from('companies').insert(payload);
+
+                    if (mounted) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _companiesFuture = _getCompanies();
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Empresa criada com sucesso')),
+                      );
+                    }
+                  } catch (e) {
+                    debugPrint('Erro ao criar empresa: $e');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Não foi possível criar a empresa: $e')),
+                      );
+                    }
                   }
                 },
                 child: const Text('Salvar'),
@@ -202,8 +239,8 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
         .from('profiles')
         .select()
         .eq('company_id', companyId)
-        .eq('role', 'client')
-        .order('name', ascending: true);
+        .eq('profile_level', 'client')
+        .order('nome', ascending: true);
 
     return List<Map<String, dynamic>>.from(response);
   }
@@ -213,8 +250,8 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
         .from('profiles')
         .select()
         .eq('company_id', companyId)
-        .eq('role', 'staff_beta')
-        .order('name', ascending: true);
+        .eq('profile_level', 'staff_beta')
+        .order('nome', ascending: true);
 
     return List<Map<String, dynamic>>.from(response);
   }
@@ -223,7 +260,7 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
     final response = await supabase
         .from('cash_entries')
         .select()
-        .eq('staff_id', employeeId)
+        .eq('created_by', employeeId)
         .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(response);
@@ -231,68 +268,275 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
 
   void _openAddPersonSheet() {
     final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-
-    final role = selectedTab == 0 ? 'client' : 'staff_beta';
+    final birthDateController = TextEditingController();
+    final guardianNameController = TextEditingController();
+    final cpfController = TextEditingController();
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (_) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                selectedTab == 0 ? 'Novo cliente' : 'Novo funcionário',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nome',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Telefone',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () async {
-                  if (nameController.text.trim().isEmpty) return;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            bool createWithAccess = false;
+            bool isMinor = false;
+            String selectedProfileLevel = selectedTab == 0 ? 'client' : 'staff_beta';
 
-                  await supabase.from('profiles').insert({
-                    'name': nameController.text.trim(),
-                    'phone': phoneController.text.trim(),
-                    'role': role,
-                    'company_id': companyId,
-                  });
-
-                  if (mounted) {
-                    Navigator.pop(context);
-                    setState(() {});
-                  }
-                },
-                child: const Text('Salvar'),
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
               ),
-            ],
-          ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      selectedTab == 0 ? 'Novo cliente' : 'Novo funcionário',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nome',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    if (selectedTab == 0) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: birthDateController,
+                        decoration: const InputDecoration(
+                          labelText: 'Data de nascimento',
+                          hintText: 'YYYY-MM-DD',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      CheckboxListTile(
+                        value: isMinor,
+                        onChanged: (value) {
+                          setModalState(() {
+                            isMinor = value ?? false;
+                          });
+                        },
+                        title: const Text('Menor de idade'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      if (isMinor) ...[
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: guardianNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nome do responsável',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                    ],
+                    if (selectedTab == 1) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: cpfController,
+                        decoration: const InputDecoration(
+                          labelText: 'CPF',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: selectedProfileLevel,
+                        decoration: const InputDecoration(
+                          labelText: 'Profile level',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'staff_beta',
+                            child: Text('staff_beta'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'staff_alfa',
+                            child: Text('staff_alfa'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setModalState(() {
+                              selectedProfileLevel = value;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    StatefulBuilder(
+                      builder: (context, setCheckboxState) {
+                        return CheckboxListTile(
+                          value: createWithAccess,
+                          onChanged: (value) {
+                            setCheckboxState(() {
+                              createWithAccess = value ?? false;
+                            });
+                            setModalState(() {});
+                          },
+                          title: const Text('Criar acesso ao app'),
+                          subtitle: const Text(
+                            'O usuário poderá acessar o app com email e senha',
+                          ),
+                        );
+                      },
+                    ),
+                    if (createWithAccess) ...[
+                      const Divider(),
+                      TextField(
+                        controller: emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email para acesso',
+                          hintText: 'email@exemplo.com',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: passwordController,
+                        decoration: const InputDecoration(
+                          labelText: 'Senha',
+                          hintText: 'Mínimo 6 caracteres',
+                          border: OutlineInputBorder(),
+                        ),
+                        obscureText: true,
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () async {
+                        if (nameController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Informe o nome')),
+                          );
+                          return;
+                        }
+
+                        if (selectedTab == 0 && isMinor && guardianNameController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Informe o nome do responsável')),
+                          );
+                          return;
+                        }
+
+                        if (selectedTab == 1 && cpfController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Informe o CPF')),
+                          );
+                          return;
+                        }
+
+                        if (createWithAccess) {
+                          final email = emailController.text.trim();
+                          final password = passwordController.text.trim();
+
+                          if (email.isEmpty || !email.contains('@')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Informe um email válido'),
+                              ),
+                            );
+                            return;
+                          }
+                          if (password.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Senha deve ter no mínimo 6 caracteres',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                        }
+
+                        try {
+                          final payload = <String, dynamic>{
+                            'nome': nameController.text.trim(),
+                            'company_id': companyId,
+                            'is_active': true,
+                            'profile_level': selectedTab == 0 ? 'client' : selectedProfileLevel,
+                          };
+
+                          if (selectedTab == 0) {
+                            payload['birth_date'] = birthDateController.text.trim().isNotEmpty
+                                ? birthDateController.text.trim()
+                                : null;
+                            if (isMinor) {
+                              payload['guardian_name'] = guardianNameController.text.trim();
+                            }
+                          } else {
+                            payload['cpf'] = cpfController.text.trim();
+                            payload['profile_level'] = selectedProfileLevel;
+                          }
+
+                          if (createWithAccess) {
+                            final authResponse = await supabase.auth.signUp(
+                              email: emailController.text.trim(),
+                              password: passwordController.text.trim(),
+                            );
+
+                            if (authResponse.user != null) {
+                              final userId = authResponse.user!.id;
+                              payload['id'] = userId;
+                              payload['email'] = emailController.text.trim();
+                              await supabase.from('profiles').insert(payload);
+
+                              if (mounted) {
+                                Navigator.pop(context);
+                                setState(() {});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${selectedTab == 0 ? 'Cliente' : 'Funcionário'} criado com sucesso! Verifique o email para confirmar.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          } else {
+                            await supabase.from('profiles').insert(payload);
+
+                            if (mounted) {
+                              Navigator.pop(context);
+                              setState(() {});
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    '${selectedTab == 0 ? 'Cliente' : 'Funcionário'} salvo com sucesso',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Erro: $e')));
+                        }
+                      },
+                      child: const Text('Salvar'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -321,8 +565,8 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
             return Card(
               child: ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(client['name'] ?? ''),
-                subtitle: Text(client['phone'] ?? ''),
+                title: Text(client['nome'] ?? ''),
+                subtitle: Text(client['telefone'] ?? ''),
               ),
             );
           },
@@ -358,8 +602,8 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
             return Card(
               child: ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.badge)),
-                title: Text(employee['name'] ?? ''),
-                subtitle: Text(employee['phone'] ?? ''),
+                title: Text(employee['nome'] ?? ''),
+                subtitle: Text(employee['telefone'] ?? ''),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   setState(() {
@@ -388,8 +632,8 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
               });
             },
           ),
-          title: Text(selectedEmployee!['name'] ?? ''),
-          subtitle: Text(selectedEmployee!['phone'] ?? ''),
+          title: Text(selectedEmployee!['nome'] ?? ''),
+          subtitle: Text(selectedEmployee!['telefone'] ?? ''),
         ),
         const Divider(),
         const Padding(
@@ -418,20 +662,93 @@ class _CompanyPeoplePageState extends State<CompanyPeoplePage> {
                 );
               }
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: entries.length,
-                itemBuilder: (context, index) {
-                  final entry = entries[index];
+              double totalIncome = 0.0;
+              double totalExpense = 0.0;
 
-                  return Card(
-                    child: ListTile(
-                      title: Text(entry['description'] ?? 'Movimentação'),
-                      subtitle: Text(entry['type'] ?? ''),
-                      trailing: Text('R\$ ${entry['value'] ?? 0}'),
+              for (final entry in entries) {
+                final raw = entry['value'];
+                double v = 0.0;
+                if (raw is num) {
+                  v = raw.toDouble();
+                } else if (raw is String) {
+                  v = double.tryParse(raw) ?? 0.0;
+                }
+
+                final type = (entry['type'] as String?)?.toLowerCase();
+                final status = (entry['status'] as String?)?.toLowerCase();
+
+                bool isExpense = false;
+                if (type != null && (type.contains('exp') || type.contains('saida') || type.contains('out') || type.contains('cost'))) {
+                  isExpense = true;
+                }
+                if (status != null && (status.contains('saida') || status.contains('expense') || status.contains('out'))) {
+                  isExpense = true;
+                }
+                if (!isExpense && v < 0) isExpense = true;
+
+                if (isExpense) {
+                  totalExpense += v.abs();
+                } else {
+                  totalIncome += v;
+                }
+              }
+
+              final net = totalIncome - totalExpense;
+
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Entrada', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text('R\$ ${totalIncome.toStringAsFixed(2)}'),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text('Total Saída', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text('R\$ ${totalExpense.toStringAsFixed(2)}'),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                const Text('Saldo', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text('R\$ ${net.toStringAsFixed(2)}', style: TextStyle(color: net < 0 ? Colors.red : Colors.green)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: entries.length,
+                      itemBuilder: (context, index) {
+                        final entry = entries[index];
+
+                        return Card(
+                          child: ListTile(
+                            title: Text(entry['description'] ?? 'Movimentação'),
+                            subtitle: Text((entry['type'] ?? entry['status'] ?? '').toString()),
+                            trailing: Text('R\$ ${entry['value'] ?? 0}'),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),

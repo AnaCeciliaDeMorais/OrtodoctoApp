@@ -14,6 +14,7 @@ class AppointmentModel {
   final String? deletedReason;
   final String createdBy;
   final String? updatedBy;
+  final String? attendanceStatus;
 
   final String? patientName;
   final List<AppointmentReminderModel> reminders;
@@ -34,10 +35,16 @@ class AppointmentModel {
     this.updatedBy,
     this.patientName,
     this.reminders = const [],
+    this.attendanceStatus,
   });
 
   factory AppointmentModel.fromMap(Map<String, dynamic> map) {
-    final remindersRaw = (map['appointment_reminders'] as List?) ?? [];
+    final remindersRaw = map['appointment_reminders'];
+    final rawList = remindersRaw is List
+        ? remindersRaw
+        : remindersRaw is Map<String, dynamic>
+            ? [remindersRaw]
+            : <dynamic>[];
 
     return AppointmentModel(
       id: map['id'] as String,
@@ -54,10 +61,12 @@ class AppointmentModel {
       createdBy: map['created_by'] as String,
       updatedBy: map['updated_by'] as String?,
       patientName: map['patients']?['name'] as String?,
-      reminders: remindersRaw
-          .map((e) => AppointmentReminderModel.fromMap(e as Map<String, dynamic>))
+      reminders: rawList
+          .whereType<Map<String, dynamic>>()
+          .map(AppointmentReminderModel.fromMap)
           .toList()
         ..sort((a, b) => a.showOnDate.compareTo(b.showOnDate)),
+      attendanceStatus: map['attendance_status'] as String?,
     );
   }
 }

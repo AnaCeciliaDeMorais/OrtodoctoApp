@@ -15,15 +15,15 @@ class ClientRepository {
   }
 
   Future<void> deletePatient(String id) async {
-  await _supabase
-      .from('patients')
-      .delete()
-      .eq('id', id);
-}
+    await _supabase.from('patients').delete().eq('id', id);
+  }
 
   Future<ClientModel> getClientById(String id) async {
-    final response =
-        await _supabase.from('patients').select().eq('id', id).single();
+    final response = await _supabase
+        .from('patients')
+        .select()
+        .eq('id', id)
+        .single();
 
     return ClientModel.fromMap(response);
   }
@@ -44,73 +44,76 @@ class ClientRepository {
     });
   }
 
- Future<void> updatePatient({
-  required String id,
-  required String name,
-  String? phone,
-  String? cpf,
-  String? rg,
-  String? addressStreet,
-  String? addressNumber,
-  String? neighborhood,
-  String? city,
-  String? guardianName,
-  String? guardianCpf,
-}) async {
-  await _supabase.from('patients').update({
-    'name': name,
-    'phone': phone,
-    'cpf': cpf,
-    'rg': rg,
-    'street': addressStreet,
-    'number': addressNumber,
-    'neighborhood': neighborhood,
-    'city': city,
-    'guardian_name': guardianName,
-    'guardian_cpf': guardianCpf,
-  }).eq('id', id);
-}
+  Future<void> updatePatient({
+    required String id,
+    required String name,
+    String? phone,
+    String? cpf,
+    String? rg,
+    String? street,
+    String? number,
+    String? neighborhood,
+    String? city,
+    String? guardianName,
+    String? guardianCpf,
+  }) async {
+    await _supabase
+        .from('patients')
+        .update({
+          'name': name,
+          'phone': phone,
+          'cpf': cpf,
+          'rg': rg,
+          'street': street,
+          'number': number,
+          'neighborhood': neighborhood,
+          'city': city,
+          'guardian_name': guardianName,
+          'guardian_cpf': guardianCpf,
+        })
+        .eq('id', id);
+  }
 
-Future<List<Map<String, dynamic>>> getClientFinancialEntries(
-  String clientId,
-) async {
-  final response = await _supabase
-      .from('cash_entries')
-      .select()
-      .eq('patient_id', clientId)
-      .order('due_date', ascending: false);
+  Future<List<Map<String, dynamic>>> getClientFinancialEntries(
+    String clientId,
+  ) async {
+    final response = await _supabase
+        .from('cash_entries')
+        .select()
+        .eq('patient_id', clientId)
+        .order('due_date', ascending: false);
 
-  return List<Map<String, dynamic>>.from(response);
-}
+    return List<Map<String, dynamic>>.from(response);
+  }
 
-Future<void> createFinancialEntry({
-  required String clientId,
-  required String status,
-  required double value,
-  required DateTime dueDate,
-  String? description,
-  String entryType = 'launch',
-  String? installmentGroupId,
-  int? installmentNumber,
-  int? installmentTotal,
-}) async {
+  Future<void> createFinancialEntry({
+    required String clientId,
+    required String status,
+    required double value,
+    required DateTime dueDate,
+    String? description,
+    String entryType = 'launch',
+    String? installmentGroupId,
+    int? installmentNumber,
+    int? installmentTotal,
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
 
-  final userId = _supabase.auth.currentUser?.id;
+    await _supabase.from('cash_entries').insert({
+      'patient_id': clientId,
+      'created_by': userId,
+      'status': status,
+      'value': value,
+      'due_date': dueDate.toIso8601String().split('T').first,
+      'description': description,
+      'confirmed': false,
+      'entry_type': entryType,
+      'installment_group_id': installmentGroupId,
+      'installment_number': installmentNumber,
+      'installment_total': installmentTotal,
+    });
+  }
 
-  await _supabase.from('cash_entries').insert({
-    'patient_id': clientId,
-    'created_by': userId,
-    'status': 'x',
-    'value': value,
-    'due_date': dueDate.toIso8601String(),
-    'description': description,
-    'confirmed': false,
-    'entry_type': entryType,
-    'installment_group_id': installmentGroupId,
-    'installment_number': installmentNumber,
-    'installment_total': installmentTotal,
-  });
-}
   Future<void> updateFinancialEntry({
     required String id,
     required String status,
@@ -118,13 +121,16 @@ Future<void> createFinancialEntry({
     required DateTime dueDate,
     String? description,
   }) async {
-    await _supabase.from('cash_entries').update({
-      'status': status,
-      'value': value,
-      'due_date': dueDate.toIso8601String(),
-      'description': description,
-      'confirmed': status == 'ok',
-    }).eq('id', id);
+    await _supabase
+        .from('cash_entries')
+        .update({
+          'status': status,
+          'value': value,
+          'due_date': dueDate.toIso8601String(),
+          'description': description,
+          'confirmed': status == 'ok',
+        })
+        .eq('id', id);
   }
 
   Future<void> deleteFinancialEntry(String id) async {
@@ -134,22 +140,42 @@ Future<void> createFinancialEntry({
   Future<void> confirmPayment({
     required String id,
     required String paymentMethod,
+    required DateTime paymentDate,
+    required String patientId,
+    required double paymentValue,
+    String? observation,
   }) async {
-    await _supabase.from('cash_entries').update({
-      'status': 'ok',
-      'confirmed': true,
+    final userId = _supabase.auth.currentUser?.id;
+
+    await _supabase
+        .from('cash_entries')
+        .update({
+          'status': 'ok',
+          'confirmed': true,
+          'payment_method': paymentMethod,
+          'payment_date': paymentDate.toIso8601String().split('T').first,
+          'confirmed_at': DateTime.now().toIso8601String(),
+          'confirmed_by': userId,
+        })
+        .eq('id', id);
+
+    await _supabase.from('cash_entries').insert({
+      'patient_id': patientId,
+      'created_by': userId,
+      'value': paymentValue,
+      'status': 'entrada',
       'payment_method': paymentMethod,
-      'payment_date': DateTime.now().toIso8601String(),
-      'confirmed_at': DateTime.now().toIso8601String(),
-    }).eq('id', id);
+      'payment_date': paymentDate.toIso8601String(),
+      'observation': observation,
+    });
   }
 
   Future<List<Map<String, dynamic>>> getClientAppointments(
-  String clientId,
+    String clientId,
   ) async {
-     final response = await _supabase
-          .from('appointments')
-          .select('''
+    final response = await _supabase
+        .from('appointments')
+        .select('''
             id,
             clinic_date,
             time_slot,
@@ -159,9 +185,9 @@ Future<void> createFinancialEntry({
             notes,
             appointment_labels(name)
           ''')
-          .eq('patient_id', clientId)
-          .order('clinic_date', ascending: false);
+        .eq('patient_id', clientId)
+        .order('clinic_date', ascending: false);
 
-      return List<Map<String, dynamic>>.from(response);
-} 
+    return List<Map<String, dynamic>>.from(response);
+  }
 }

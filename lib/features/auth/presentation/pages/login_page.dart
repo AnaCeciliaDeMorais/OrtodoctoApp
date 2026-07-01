@@ -68,12 +68,19 @@ Future<void> _login() async {
 
     if (profile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Perfil não encontrado')),
+        const SnackBar(content: Text('Perfil não encontrado. Entre em contato com o administrador.')),
       );
       return;
     }
 
-    final profileLevel = profile['profile_level'] as String;
+    final profileLevel = (profile['profile_level'] as String?) ?? '';
+    
+    if (profileLevel.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nível de acesso não definido')),
+      );
+      return;
+    }
 
     if (profileLevel == 'client') {
       Navigator.of(context).pushReplacement(

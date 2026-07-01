@@ -27,12 +27,13 @@ class AppointmentEditorSheet extends StatefulWidget {
 
 class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
   final _formKey = GlobalKey<FormState>();
-
-  final TextEditingController _patientIdController = TextEditingController();
+  String? _selectedPatientId; 
+List<Map<String, dynamic>> _patients = [];
   final TextEditingController _notesController = TextEditingController();
 
   late DateTime _selectedClinicDate;
   late String _selectedTimeSlot;
+  final List<String> _selectedTimeSlots = [];
   String _selectedStatus = 'Agendado';
   String? _selectedLabelId;
 
@@ -40,6 +41,13 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
   List<AppointmentLabelModel> _labels = [];
   List<String> _availableSlots = [];
+
+  String _normalizeTime(String time) {
+    if (time.length >= 5) {
+      return time.substring(0, 5);
+    }
+    return time;
+  }
 
   final List<String> _statuses = const [
     'Agendado',
@@ -56,18 +64,17 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
     final initial = widget.initialAppointment;
 
     _selectedClinicDate = initial?.clinicDate ?? widget.selectedDate;
-    _selectedTimeSlot = initial?.timeSlot ?? widget.initialTime;
-    _selectedStatus = initial?.status ?? 'Agendado';
+    _selectedTimeSlot = _normalizeTime(initial?.timeSlot ?? widget.initialTime);    _selectedStatus = initial?.status ?? 'Agendado';
     _selectedLabelId = initial?.labelId;
     _notesController.text = initial?.notes ?? '';
-    _patientIdController.text = initial?.patientId ?? '';
+    _selectedPatientId = initial?.patientId;
+    _selectedTimeSlots.add(_selectedTimeSlot);
 
     _loadSupportData();
   }
 
   @override
   void dispose() {
-    _patientIdController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -97,69 +104,90 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
     return slots;
   }
+  
+Future<void> _loadSupportData() async {
+  try {
+    final labels = await widget.repository.getLabels();
 
-  Future<void> _loadSupportData() async {
-    try {
-      final labels = await widget.repository.getLabels();
-      final appointments =
-          await widget.repository.getAppointmentsByDate(_selectedClinicDate);
+    final patients = await widget.repository.getPatients();
 
-      final occupied = appointments
-          .where((a) => a.id != widget.initialAppointment?.id)
-          .map((a) => a.timeSlot)
-          .toSet();
+    final appointments =
+      await widget.repository.getAppointmentsByDate(_selectedClinicDate);
 
-      final available = _buildTimeSlots()
-          .where((slot) => !occupied.contains(slot) || slot == _selectedTimeSlot)
-          .toList();
+    final appointmentsBySlot = <String, int>{};
 
-      if (!mounted) return;
+    for (final appointment in appointments) {
+      final slot = _normalizeTime(appointment.timeSlot);
 
-      setState(() {
-        _labels = labels;
-        _availableSlots = available;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar dados do formulário: $e')),
-      );
+      if (appointment.id == widget.initialAppointment?.id) {
+        continue;
+      }
+
+      appointmentsBySlot[slot] = (appointmentsBySlot[slot] ?? 0) + 1;
     }
-  }
 
-  Future<void> _pickClinicDay() async {
-    final allowedDates =
-        widget.clinicDays.map((e) => _dateOnly(e.clinicDate)).toSet();
+    final available = _buildTimeSlots()
+        .where((slot) {
+          final totalInSlot = appointmentsBySlot[slot] ?? 0;
 
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedClinicDate,
-      firstDate: widget.clinicDays.isNotEmpty
-          ? widget.clinicDays.first.clinicDate
-          : DateTime.now(),
-      lastDate: widget.clinicDays.isNotEmpty
-          ? widget.clinicDays.last.clinicDate
-          : DateTime.now().add(const Duration(days: 365)),
-      selectableDayPredicate: (day) {
-        return allowedDates.contains(_dateOnly(day));
-      },
-    );
+          // permite até 2 pacientes no mesmo horário
+          return totalInSlot < 2 || slot == _selectedTimeSlot;
+        }) 
+        .toList();
+    if (!mounted) return;
 
-    if (picked == null) return;
+    if (!available.contains(_selectedTimeSlot) && available.isNotEmpty) {
+      _selectedTimeSlot = available.first;  
+    }
 
     setState(() {
-      _selectedClinicDate = picked;
+      _labels = labels;
+      _patients = patients;
+      _availableSlots = available;
     });
+  } catch (e) {
+    if (!mounted) return;
 
-    await _loadSupportData();
-
-    if (!_availableSlots.contains(_selectedTimeSlot) &&
-        _availableSlots.isNotEmpty) {
-      setState(() {
-        _selectedTimeSlot = _availableSlots.first;
-      });
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Erro ao carregar dados do formulário: $e',
+        ),
+      ),
+    );
   }
+}
+
+  Future<void> _pickClinicDay() async {
+  final allowedDates =
+      widget.clinicDays.map((e) => _dateOnly(e.clinicDate)).toSet();
+
+  final picked = await showDatePicker(
+    context: context,
+    initialDate: _selectedClinicDate,
+    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    selectableDayPredicate: (day) {
+      if (allowedDates.isEmpty) return true;
+      return allowedDates.contains(_dateOnly(day));
+    },
+  );
+
+  if (picked == null) return;
+
+  setState(() {
+    _selectedClinicDate = picked;
+  });
+
+  await _loadSupportData();
+
+  if (!_availableSlots.contains(_selectedTimeSlot) &&
+      _availableSlots.isNotEmpty) {
+    setState(() {
+      _selectedTimeSlot = _availableSlots.first;
+    });
+  }
+}
 
   Future<AppointmentLabelModel?> _showCreateLabelDialog() async {
     final controller = TextEditingController();
@@ -253,23 +281,31 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
     try {
       if (!_isEditing) {
-        await widget.repository.createAppointment(
-          patientId: _patientIdController.text.trim(),
-          clinicDate: _selectedClinicDate,
-          timeSlot: _selectedTimeSlot,
-          status: 'Agendado',
-          labelId: _selectedLabelId,
-          notes: _notesController.text.trim(),
-        );
+        if (_selectedTimeSlots.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Selecione pelo menos um horário')),
+          );
+          return;
+        }
+
+        for (final slot in _selectedTimeSlots) {
+          await widget.repository.createAppointment(
+            patientId: _selectedPatientId!,
+            clinicDate: _selectedClinicDate,
+            timeSlot: slot,
+            labelId: _selectedLabelId,
+            notes: _notesController.text.trim(),
+          );
+        }
       } else {
-        await widget.repository.updateAppointment(
-          appointmentId: widget.initialAppointment!.id,
-          patientId: _patientIdController.text.trim(),
-          clinicDate: _selectedClinicDate,
-          timeSlot: _selectedTimeSlot,
-          status: _selectedStatus,
-          labelId: _selectedLabelId,
-          notes: _notesController.text.trim(),
+         await widget.repository.updateAppointment(
+            appointmentId: widget.initialAppointment!.id,
+            patientId: _selectedPatientId!,
+            clinicDate: _selectedClinicDate,
+            timeSlot: _selectedTimeSlot,
+            status: _selectedStatus,
+            labelId: _selectedLabelId,
+            notes: _notesController.text.trim(),
         );
       }
 
@@ -285,6 +321,46 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
       if (mounted) {
         setState(() => _saving = false);
       }
+    }
+  }
+
+  Future<void> _deleteAppointment() async {
+  if (widget.initialAppointment == null) return;
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
+        title: const Text('Excluir agendamento'),
+        content: const Text('Tem certeza que deseja excluir este agendamento?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirm != true) return;
+
+  try {
+    await widget.repository.deleteAppointment(
+      widget.initialAppointment!.id,
+    );
+
+    if (!mounted) return;
+     Navigator.pop(context, true);
+    } catch (e) {
+    if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao excluir: $e')),
+      );
     }
   }
 
@@ -323,50 +399,106 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
                 ),
                 const SizedBox(height: 16),
 
-                TextFormField(
-                  controller: _patientIdController,
-                  decoration: const InputDecoration(
-                    labelText: 'ID do paciente',
-                    border: OutlineInputBorder(),
+                Autocomplete<Map<String, dynamic>>(
+                  initialValue: TextEditingValue(
+                    text: _isEditing
+                        ? (_patients.firstWhere(
+                            (p) => p['id'] == _selectedPatientId,
+                            orElse: () => {'name': ''},
+                          )['name'] ?? '')
+                        : '',
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Informe o paciente';
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.trim().isEmpty) {
+                      return const Iterable<Map<String, dynamic>>.empty();
                     }
-                    return null;
+
+                    return _patients.where((patient) {
+                      final name = (patient['name'] ?? '').toString().toLowerCase();
+                      final search = textEditingValue.text.toLowerCase();
+                      return name.contains(search);
+                    });
+                  },
+                  displayStringForOption: (patient) => patient['name'] ?? '',
+                  onSelected: (patient) {
+                    setState(() {
+                      _selectedPatientId = patient['id'];
+                    });
+                  },
+                  fieldViewBuilder: (
+                    context,
+                    controller,
+                    focusNode,
+                    onFieldSubmitted,
+                  ) {
+                    return TextFormField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Paciente',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (_) {
+                        if (_selectedPatientId == null) {
+                          return 'Selecione um paciente';
+                        }
+                        return null;
+                      },
+                      onChanged: (_) {
+                        setState(() {
+                          _selectedPatientId = null;
+                        });
+                      },
+                    );
                   },
                 ),
 
                 const SizedBox(height: 16),
 
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Dia do atendimento'),
-                  subtitle: Text(_formatDate(_selectedClinicDate)),
-                  trailing: const Icon(Icons.calendar_month),
+                InkWell(
                   onTap: _pickClinicDay,
+                  borderRadius: BorderRadius.circular(4),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Dia do atendimento',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_month),
+                    ),
+                    child: Text(_formatDate(_selectedClinicDate)),
+                  ),
                 ),
 
                 const SizedBox(height: 8),
 
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedTimeSlot,
-                  items: _availableSlots
-                      .map(
-                        (slot) => DropdownMenuItem<String>(
-                          value: slot,
-                          child: Text(slot),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedTimeSlot = value);
-                    }
-                  },
+                InputDecorator(
                   decoration: const InputDecoration(
-                    labelText: 'Horário',
+                    labelText: 'Horários',
                     border: OutlineInputBorder(),
+                  ),
+                  child: Column(
+                    children: _availableSlots.map((slot) {
+                      final selected = _selectedTimeSlots.contains(slot);
+
+                      return CheckboxListTile(
+                        value: selected,
+                        title: Text(slot),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (checked) {
+                          setState(() {
+                            if (checked == true) {
+                              _selectedTimeSlots.add(slot);
+                            } else {
+                              _selectedTimeSlots.remove(slot);
+                            }
+
+                            if (_selectedTimeSlots.isNotEmpty) {
+                              _selectedTimeSlot = _selectedTimeSlots.first;
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
                 ),
 
@@ -374,7 +506,7 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
 
                 if (_isEditing) ...[
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedStatus,
+                    value: _statuses.contains(_selectedStatus) ? _selectedStatus : 'Agendado',
                     items: _statuses
                         .map(
                           (status) => DropdownMenuItem<String>(
@@ -397,7 +529,9 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
                 ],
 
                 DropdownButtonFormField<String?>(
-                  initialValue: _selectedLabelId,
+                  value: _labels.any((label) => label.id == _selectedLabelId)
+                      ? _selectedLabelId
+                      : null,
                   items: [
                     const DropdownMenuItem<String?>(
                       value: null,
@@ -438,6 +572,15 @@ class _AppointmentEditorSheetState extends State<AppointmentEditorSheet> {
                   onPressed: _saving ? null : _save,
                   child: Text(_saving ? 'Salvando...' : 'Salvar'),
                 ),
+
+                if (_isEditing) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _deleteAppointment,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Excluir agendamento'),
+                  ),
+                ],
 
                 const SizedBox(height: 10),
 

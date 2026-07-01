@@ -6,8 +6,8 @@ class ClientModel {
   final String? cpf;
   final String? rg;
 
-  final String? addressStreet;
-  final String? addressNumber;
+  final String? street;
+  final String? number;
   final String? neighborhood;
   final String? city;
 
@@ -24,8 +24,8 @@ class ClientModel {
     this.cpf,
     this.rg,
     this.birthDate,
-    this.addressStreet,
-    this.addressNumber,
+    this.street,
+    this.number,
     this.neighborhood,
     this.city,
     this.guardianName,
@@ -42,14 +42,16 @@ class ClientModel {
       cpf: map['cpf'],
       rg: map['rg'],
 
-      addressStreet: map['street'],
-      addressNumber: map['number'],
+      street: map['address_street'] ?? map['street'],
+      number: map['address_number'] ?? map['number'],
       neighborhood: map['neighborhood'],
       city: map['city'],
 
       guardianName: map['guardian_name'],
       guardianCpf: map['guardian_cpf'],
-      birthDate: map['birth_date'] != null ? DateTime.parse(map['birth_date'] as String) : null,
+      birthDate: map['birth_date'] != null
+          ? DateTime.parse(map['birth_date'] as String)
+          : null,
       notes: map['notes'],
     );
   }
@@ -62,10 +64,10 @@ class ClientModel {
       'phone': phone,
       'cpf': cpf,
       'rg': rg,
-      'birth_date': birthDate?.toIso8601String(),
+      'birth_date': birthDate?.toIso8601String().split('T').first,
 
-      'street': addressStreet,
-      'number': addressNumber,
+      'street': street,
+      'number': number,
       'neighborhood': neighborhood,
       'city': city,
 
