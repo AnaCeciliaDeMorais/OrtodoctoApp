@@ -1,0 +1,5 @@
+# Configuração das Edge Functions para a CLI do Supabase (supabase functions deploy).
+# As funções conferem o login por conta própria, por isso verify_jwt = false.
+
+[functions.admin-users]
+verify_jwt = false
