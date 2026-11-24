@@ -6,9 +6,11 @@ import '../cash/cash_page.dart';
 import '../client/client_appointments_page.dart';
 import '../client/client_home_page.dart';
 import '../client/client_payments_page.dart';
+import '../client/client_reminders.dart';
 import '../patients/patients_page.dart';
 import '../products/products_page.dart';
 import '../schedule/schedule_page.dart';
+import '../schedule/schedule_repository.dart';
 import 'more_page.dart';
 
 class _Dest {
@@ -51,6 +53,14 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final session = SessionScope.of(context);
+    final shell = _shell(context, session);
+    // Cliente: alerta 1 hora antes da consulta, em qualquer aba.
+    return session.isClient
+        ? AppointmentAlertWatcher(load: () => ScheduleRepository().mine(), child: shell)
+        : shell;
+  }
+
+  Widget _shell(BuildContext context, AppSession session) {
     final dests = _destinations(session.role);
     final index = _index.clamp(0, dests.length - 1);
     // Recria a tela ao trocar de empresa para recarregar os dados.

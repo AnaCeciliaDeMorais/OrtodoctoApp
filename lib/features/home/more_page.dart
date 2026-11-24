@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/session.dart';
+import '../../core/theme.dart';
 import '../approvals/approvals_page.dart';
 import '../client/client_data_page.dart';
 import '../companies/clinic_days_page.dart';
@@ -35,15 +36,16 @@ class MorePage extends StatelessWidget {
       if (session.isClient) ...[
         _item(Icons.forum_outlined, 'Tirar dúvidas', 'Pergunte à clínica',
             () => open(const QuestionsPage())),
-        _item(Icons.badge_outlined, 'Meus dados', 'Seu cadastro na clínica',
+        _item(Icons.badge_outlined, 'Meus dados', 'Telefone, senha e sair',
             () => open(const ClientDataPage())),
       ],
-      _item(Icons.person_outline, 'Meu perfil', 'Nome, senha, tema e sair',
-          () => open(const ProfilePage())),
+      if (session.isManager)
+        _item(Icons.person_outline, 'Meu perfil', 'Nome, senha e sair',
+            () => open(const ProfilePage())),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mais')),
+      appBar: AppBar(title: const Text('Mais'), actions: const [ThemeToggleButton(), SizedBox(width: 8)]),
       body: ListView(children: [
         ListTile(
           leading: CircleAvatar(child: Text(_initials(session.profile?.fullName ?? ''))),
@@ -70,4 +72,24 @@ String _initials(String name) {
   if (parts.isEmpty) return '?';
   if (parts.length == 1) return parts.first[0].toUpperCase();
   return (parts.first[0] + parts.last[0]).toUpperCase();
+}
+
+/// Ícone no canto superior direito de "Mais": alterna entre tema claro e escuro.
+class ThemeToggleButton extends StatelessWidget {
+  const ThemeToggleButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeMode,
+      builder: (context, mode, _) {
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        return IconButton(
+          tooltip: dark ? 'Usar tema claro' : 'Usar tema escuro',
+          icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+          onPressed: () => themeMode.value = dark ? ThemeMode.light : ThemeMode.dark,
+        );
+      },
+    );
+  }
 }

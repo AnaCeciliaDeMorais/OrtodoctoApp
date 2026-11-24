@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../app/session.dart';
 import '../../core/formatters.dart' as f;
 import '../../core/supabase.dart';
-import '../../core/theme.dart';
 import '../../core/validators.dart';
 import '../../core/widgets/common.dart';
 import '../auth/new_password_page.dart';
 
-/// Perfil (RF.15): nome, telefone, senha, tema e sair.
+/// Perfil da equipe (RF.15): nome, telefone, senha e sair.
+/// O tema fica no ícone do canto superior direito de "Mais".
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -74,21 +74,6 @@ class _ProfilePageState extends State<ProfilePage> {
               title: const Text('Alterar senha'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewPasswordPage())),
-            ),
-            const SizedBox(height: 8),
-            const Text('Tema'),
-            const SizedBox(height: 8),
-            ValueListenableBuilder<ThemeMode>(
-              valueListenable: themeMode,
-              builder: (context, mode, _) => SegmentedButton<ThemeMode>(
-                segments: const [
-                  ButtonSegment(value: ThemeMode.light, label: Text('Claro'), icon: Icon(Icons.light_mode)),
-                  ButtonSegment(value: ThemeMode.system, label: Text('Sistema')),
-                  ButtonSegment(value: ThemeMode.dark, label: Text('Escuro'), icon: Icon(Icons.dark_mode)),
-                ],
-                selected: {mode},
-                onSelectionChanged: (s) => themeMode.value = s.first,
-              ),
             ),
             const Divider(height: 32),
             OutlinedButton.icon(
