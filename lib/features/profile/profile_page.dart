@@ -8,6 +8,7 @@ import '../../core/widgets/common.dart';
 import '../auth/new_password_page.dart';
 
 /// Perfil da equipe (RF.15): nome, telefone, senha e sair.
+/// Vale para o gestor (chefe) e para o funcionário; o paciente usa "Meus dados".
 /// O tema fica no ícone do canto superior direito de "Mais".
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,17 +23,35 @@ class _ProfilePageState extends State<ProfilePage> {
   late final _phone = TextEditingController(text: f.phone(SessionScope.read(context).profile?.phone));
   bool _saving = false;
 
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  String? _validatePhone(String? v) {
+    final d = f.onlyDigits(v);
+    if (d.isEmpty) return null;
+    if (d.length < 10 || d.length > 11) return 'Informe DDD + número (10 ou 11 dígitos).';
+    return null;
+  }
+
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _saving = true);
     final session = SessionScope.read(context);
-    await runGuarded(context, () async {
+    final ok = await runGuarded(context, () async {
       await sb.rpc('update_my_profile', params: {
         'p_full_name': _name.text.trim(),
         'p_phone': f.onlyDigits(_phone.text),
       });
       await session.refreshProfile();
     }, success: 'Dados salvos.');
+    if (ok && mounted) {
+      _name.text = session.profile?.fullName ?? _name.text;
+      _phone.text = f.phone(session.profile?.phone);
+    }
     if (mounted) setState(() => _saving = false);
   }
 
@@ -63,10 +82,17 @@ class _ProfilePageState extends State<ProfilePage> {
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Telefone'),
+              decoration: const InputDecoration(labelText: 'Telefone', hintText: '(11) 99999-9999'),
+              validator: _validatePhone,
             ),
             const SizedBox(height: 12),
-            FilledButton.tonal(onPressed: _saving ? null : _save, child: const Text('Salvar dados')),
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.save_outlined),
+              label: Text(_saving ? 'Salvando...' : 'Salvar dados'),
+            ),
             const Divider(height: 32),
             ListTile(
               contentPadding: EdgeInsets.zero,

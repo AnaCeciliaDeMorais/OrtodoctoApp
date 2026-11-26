@@ -59,6 +59,7 @@ test/             testes das regras do app
 
 1. Crie um projeto em https://supabase.com (grátis) e anote a **URL** e a **chave publicável** (Project Settings > API).
 2. **SQL Editor** > cole `supabase/migrations/20261021000000_esquema_inicial.sql` inteiro > **Run**. Ele cria tabelas, regras de acesso (RLS ligado em tudo), funções de pagamento, relatórios, o bucket público de fotos `products` e o bucket privado `patient-files` (pasta de cada paciente).
+   Depois rode, na ordem, as atualizações da mesma pasta: `20261117000000_pagamentos_e_relatorio_vendas.sql`, `20261118000000_dados_do_paciente.sql` e `20261126000000_perfil_do_gestor.sql` (gestor e funcionário alteram o próprio nome e telefone em Meu perfil).
 3. **Authentication > Sign In / Providers**: desligue **Allow new users to sign up** (os acessos são criados pelo app) e deixe **Confirm email** como preferir (os acessos criados pelo app já saem confirmados).
 4. **Authentication > URL Configuration**: em *Redirect URLs* adicione `br.com.ortodoctor.app://reset-password` e o endereço do site (ex.: `https://app.ortodoctor.com.br`).
 5. **Authentication > Policies/Password**: mínimo de 8 caracteres com dígitos e símbolos (o app já exige: 8+ caracteres, 1 número e 1 caractere especial).
