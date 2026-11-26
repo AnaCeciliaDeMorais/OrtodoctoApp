@@ -83,7 +83,7 @@ Informe a URL e a chave do Supabase (ou preencha os valores padrão em `lib/core
 
 ```
 flutter pub get
-flutter run --dart-define=SUPABASE_URL=https://xxxx.supabase.co --dart-define=SUPABASE_KEY=sb_publishable_xxxx
+flutter run -d chrome --web-port 59474 --dart-define=SUPABASE_URL=https://fyzfzaaydxdcshxduopp.supabase.co --dart-define=SUPABASE_KEY=sb_publishable_SUA_CHAVE
 flutter build web --release   --dart-define=...   (site: publique a pasta build/web)
 flutter build appbundle       --dart-define=...   (Play Store)
 flutter build ipa             --dart-define=...   (App Store, num Mac)
