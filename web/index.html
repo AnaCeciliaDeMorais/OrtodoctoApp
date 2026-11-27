@@ -41,6 +41,21 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Cada aba tem o próprio login. O Supabase avisa as outras abas quando
+    // alguém entra ou sai (canal "sb-...-auth-token"); aqui esse canal fica
+    // exclusivo de cada aba, para um login não substituir o outro.
+    (function () {
+      var Original = window.BroadcastChannel;
+      if (!Original) return;
+      var aba = Math.random().toString(36).slice(2);
+      window.BroadcastChannel = class extends Original {
+        constructor(nome) {
+          super(/^sb-.*-auth-token$/.test(String(nome)) ? nome + '-aba-' + aba : nome);
+        }
+      };
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
